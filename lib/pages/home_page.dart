@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import '../main.dart';
 import '../models/student_model.dart';
 import '../services/csv_service.dart';
+import '../models/payment_model.dart' as payment_model; // Add prefix
+import '../services/payment_service.dart';
+import 'payment_confirmation_dialog.dart';
+import 'receipt_screen.dart';
 
 /// HOME PAGE (Dashboard)
 /// Main screen after login - shows upload button and student management options
@@ -14,13 +18,15 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   // STUDENT SEARCH STATE
-  final _studentIdController = TextEditingController(); // Connects to the text input field
-  Student? _currentStudent; // Currently loaded student (null if none)
-  bool _isSearching = false; // Loading state when searching
+  final _studentIdController = TextEditingController();
+  Student? _currentStudent;
+  bool _isSearching = false;
   
   // INPUT STATE
-  String _inputDisplay = ''; // What shows in the input field
-
+  String _inputDisplay = ''; // Only this one stays
+  
+  payment_model.Payment? _studentFeePayment;
+  payment_model.Payment? _studentFinesPayment;
   @override
   void dispose() {
     _studentIdController.dispose(); // Clean up controller
@@ -186,10 +192,10 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  /// PROCEED TO PAYMENT
-  /// Handles fee or fine payment
+/// PROCEED TO PAYMENT
+  /// Shows confirmation dialog and processes payment
   Future<void> _proceedPayment(String paymentType) async {
-    // Check if student is loaded
+    // Validate student is loaded
     if (_currentStudent == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -200,13 +206,180 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    // TODO: We'll implement payment recording in next steps
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Payment processing: $paymentType for ${_currentStudent!.fullName}'),
-        backgroundColor: Colors.blue,
+    // Get the amount based on payment type
+    final amount = paymentType == 'Fee' 
+        ? _currentStudent!.outstandingFee 
+        : _currentStudent!.outstandingFines;
+
+    // Check if amount is zero
+    if (amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No outstanding $paymentType to pay'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Check if already paid
+    final existingPayment = paymentType == 'Fee' 
+        ? _studentFeePayment 
+        : _studentFinesPayment;
+
+    if (existingPayment != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$paymentType already paid (OR: ${existingPayment.receiptNumber})'),
+          backgroundColor: Colors.blue,
+        ),
+      );
+      return;
+    }
+
+
+  // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => PaymentConfirmationDialog(
+        student: _currentStudent!,
+        paymentType: paymentType,
+        amount: amount,
       ),
     );
+
+    // User cancelled
+    if (confirmed != true) return;
+
+    // Process payment
+    try {
+      // Show loading
+      // Hide loading and show success
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).clearSnackBars();
+      
+      // Process payment through service
+      final payment = await PaymentService.processPayment(
+        student: _currentStudent!,
+        paymentType: paymentType,
+        amount: amount,
+        yearLevel: _currentStudent!.yearLevel ?? '1st Year',
+      );
+      
+      // Navigate to receipt screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ReceiptScreen(
+            payment: payment,
+            student: _currentStudent!,
+          ),
+        ),
+      );
+
+      // Process payment through service
+
+      // Update state with payment info
+      setState(() {
+        if (paymentType == 'Fee') {
+          _studentFeePayment = payment;
+          _currentStudent = Student(
+            id: _currentStudent!.id,
+            lastName: _currentStudent!.lastName,
+            firstName: _currentStudent!.firstName,
+            college: _currentStudent!.college,
+            program: _currentStudent!.program,
+            yearLevel: _currentStudent!.yearLevel,
+            outstandingFee: 0.0,
+            outstandingFines: _currentStudent!.outstandingFines,
+            outstandingUnpaidBalance: _currentStudent!.outstandingUnpaidBalance,
+          );
+        } else {
+          _studentFinesPayment = payment;
+          _currentStudent = Student(
+            id: _currentStudent!.id,
+            lastName: _currentStudent!.lastName,
+            firstName: _currentStudent!.firstName,
+            college: _currentStudent!.college,
+            program: _currentStudent!.program,
+            yearLevel: _currentStudent!.yearLevel,
+            outstandingFee: _currentStudent!.outstandingFee,
+            outstandingFines: 0.0,
+            outstandingUnpaidBalance: _currentStudent!.outstandingUnpaidBalance,
+          );
+        }
+      });
+
+      // Hide loading and navigate to receipt screen
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).clearSnackBars();
+      
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ReceiptScreen(
+            payment: payment,
+            student: _currentStudent!,
+          ),
+        ),
+      );
+
+      // Update state with payment info
+      setState(() {
+        if (paymentType == 'Fee') {
+          _studentFeePayment = payment;
+          _currentStudent = Student(
+            id: _currentStudent!.id,
+            lastName: _currentStudent!.lastName,
+            firstName: _currentStudent!.firstName,
+            college: _currentStudent!.college,
+            program: _currentStudent!.program,
+            yearLevel: _currentStudent!.yearLevel,
+            outstandingFee: 0.0, // Paid
+            outstandingFines: _currentStudent!.outstandingFines,
+            outstandingUnpaidBalance: _currentStudent!.outstandingUnpaidBalance,
+          );
+        } else {
+          _studentFinesPayment = payment;
+          _currentStudent = Student(
+            id: _currentStudent!.id,
+            lastName: _currentStudent!.lastName,
+            firstName: _currentStudent!.firstName,
+            college: _currentStudent!.college,
+            program: _currentStudent!.program,
+            yearLevel: _currentStudent!.yearLevel,
+            outstandingFee: _currentStudent!.outstandingFee,
+            outstandingFines: 0.0, // Paid
+            outstandingUnpaidBalance: _currentStudent!.outstandingUnpaidBalance,
+          );
+        }
+      });
+
+      // Hide loading and show success
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Payment successful! OR: ${payment.receiptNumber}'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+
+      // TODO: Show receipt screen (we'll add this next)
+
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Payment failed: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
+        ),
+      );
+    }
   }
 
   
@@ -345,21 +518,57 @@ class _HomePageState extends State<HomePage> {
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey),
                         borderRadius: BorderRadius.circular(8),
+                        color: _studentFeePayment != null ? Colors.green[50] : null,
                       ),
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            '₱',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            _currentStudent?.outstandingFee.toStringAsFixed(2) ?? '0.00',
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
+                          // Amount or PAID badge
+                          if (_studentFeePayment != null) ...[
+                            // PAID Badge
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.green[700],
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'PAID',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
                             ),
-                          ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'OR: ${_studentFeePayment!.receiptNumber}',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green[700],
+                              ),
+                            ),
+                          ] else ...[
+                            // Outstanding amount
+                            Row(
+                              children: [
+                                const Text(
+                                  '₱',
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _currentStudent?.outstandingFee.toStringAsFixed(2) ?? '0.00',
+                                  style: const TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -368,7 +577,7 @@ class _HomePageState extends State<HomePage> {
               ),
               
               const SizedBox(width: 16),
-              
+            
               // Fine amount
               Expanded(
                 child: Column(

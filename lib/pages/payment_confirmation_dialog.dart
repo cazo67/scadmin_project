@@ -26,7 +26,7 @@ class _PaymentConfirmationDialogState extends State<PaymentConfirmationDialog> {
   void initState() {
     super.initState();
     // Pre-select student's current year level from database
-    _selectedYearLevel = widget.student.yearLevel;
+  
   }
 
   @override
@@ -103,29 +103,18 @@ class _PaymentConfirmationDialogState extends State<PaymentConfirmationDialog> {
             
             const SizedBox(height: 16),
             
-            // YEAR LEVEL SELECTION
-            const Text(
-              'Select Year Level:',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            
-            _buildYearLevelOption('1st Year'),
-            _buildYearLevelOption('2nd Year'),
-            _buildYearLevelOption('3rd Year'),
-            _buildYearLevelOption('4th Year'),
-            _buildYearLevelOption('Extendee'),
-            
+            // YEAR LEVEL (Display Only)
+            _buildInfoRow('Year Level:', widget.student.yearLevel ?? 'N/A'),
+            const SizedBox(height: 8),
+            _buildInfoRow('College:', widget.student.college ?? 'N/A'),
+            const SizedBox(height: 8),
+            _buildInfoRow('Program:', widget.student.program ?? 'N/A'),
             const SizedBox(height: 24),
             
             // CONFIRM BUTTON
+          // CONFIRM BUTTON
             ElevatedButton(
-              onPressed: _selectedYearLevel == null 
-                  ? null 
-                  : () => Navigator.pop(context, _selectedYearLevel),
+              onPressed: () => Navigator.pop(context, true),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF1B5E20),
                 padding: const EdgeInsets.symmetric(vertical: 16),
@@ -167,48 +156,6 @@ class _PaymentConfirmationDialogState extends State<PaymentConfirmationDialog> {
           style: const TextStyle(fontWeight: FontWeight.w500),
         ),
       ],
-    );
-  }
-
-  /// BUILD YEAR LEVEL OPTION
-  /// Radio button option for year level selection
-  Widget _buildYearLevelOption(String yearLevel) {
-    final isSelected = _selectedYearLevel == yearLevel;
-    
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _selectedYearLevel = yearLevel;
-        });
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.green[50] : Colors.grey[100],
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isSelected ? Colors.green[700]! : Colors.grey[300]!,
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              isSelected ? Icons.check_circle : Icons.circle_outlined,
-              color: isSelected ? Colors.green[700] : Colors.grey,
-            ),
-            const SizedBox(width: 12),
-            Text(
-              yearLevel,
-              style: TextStyle(
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? Colors.green[700] : Colors.black87,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
