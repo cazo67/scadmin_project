@@ -9,24 +9,49 @@ import '../main.dart';
 class CsvService {
   
   // CSV COLUMN CONFIGURATION
-  // IMPORTANT: If your CSV uses different column names, modify these constants
-  static const String COL_ID = 'id';
-  static const String COL_LAST_NAME = 'lastName';
-  static const String COL_FIRST_NAME = 'firstName';
-  static const String COL_COLLEGE = 'college';
-  static const String COL_PROGRAM = 'program';
-  static const String COL_YEAR_LEVEL = 'yearLevel';
-  static const String COL_FEE = 'outstanding_fee';
-  static const String COL_FINES = 'outstanding_fines';
-  static const String COL_BALANCE = 'outstanding_unpaid_balance';
+  // Maps user-friendly CSV headers to system format
+  
+  // USER'S CSV HEADERS (what you see in Excel)
+  static const String USER_COL_ID = 'STUDENT ID';
+  static const String USER_COL_LAST_NAME = 'LAST NAME';
+  static const String USER_COL_FIRST_NAME = 'FIRST NAME';
+  static const String USER_COL_COLLEGE = 'COLLEGE';
+  static const String USER_COL_PROGRAM = 'PROGRAM';
+  static const String USER_COL_YEAR_LEVEL = 'YEAR LEVEL';
+  static const String USER_COL_FEE = 'FEE AMOUNT';
+  static const String USER_COL_FINES = 'FINES AMOUNT';
+  static const String USER_COL_BALANCE = 'UNPAID BALANCE';
+  
+  // SYSTEM COLUMN NAMES (used internally)
+  static const String SYS_COL_ID = 'id';
+  static const String SYS_COL_LAST_NAME = 'lastName';
+  static const String SYS_COL_FIRST_NAME = 'firstName';
+  static const String SYS_COL_COLLEGE = 'college';
+  static const String SYS_COL_PROGRAM = 'program';
+  static const String SYS_COL_YEAR_LEVEL = 'yearLevel';
+  static const String SYS_COL_FEE = 'outstanding_fee';
+  static const String SYS_COL_FINES = 'outstanding_fines';
+  static const String SYS_COL_BALANCE = 'outstanding_unpaid_balance';
 
-  // REQUIRED COLUMNS
-  // These columns MUST exist in the CSV file
+  // REQUIRED COLUMNS (using user-friendly names)
   static const List<String> REQUIRED_COLUMNS = [
-    COL_ID,
-    COL_LAST_NAME,
-    COL_FIRST_NAME,
+    USER_COL_ID,
+    USER_COL_LAST_NAME,
+    USER_COL_FIRST_NAME,
   ];
+  
+  // COLUMN MAPPING (Excel header → System name)
+  static const Map<String, String> COLUMN_MAPPING = {
+    USER_COL_ID: SYS_COL_ID,
+    USER_COL_LAST_NAME: SYS_COL_LAST_NAME,
+    USER_COL_FIRST_NAME: SYS_COL_FIRST_NAME,
+    USER_COL_COLLEGE: SYS_COL_COLLEGE,
+    USER_COL_PROGRAM: SYS_COL_PROGRAM,
+    USER_COL_YEAR_LEVEL: SYS_COL_YEAR_LEVEL,
+    USER_COL_FEE: SYS_COL_FEE,
+    USER_COL_FINES: SYS_COL_FINES,
+    USER_COL_BALANCE: SYS_COL_BALANCE,
+  };
 
   /// PICK AND PARSE CSV FILE
   /// Opens file picker, reads CSV, validates, and returns Student objects
@@ -85,10 +110,14 @@ class CsvService {
         }
 
         // Convert row array to Map using headers
+        // Map user-friendly headers to system format
         final Map<String, dynamic> rowMap = {};
         for (int j = 0; j < headers.length; j++) {
           if (j < row.length) {
-            rowMap[headers[j]] = row[j];
+            final userHeader = headers[j];
+            // Map to system column name (or use original if no mapping exists)
+            final systemHeader = COLUMN_MAPPING[userHeader] ?? userHeader;
+            rowMap[systemHeader] = row[j];
           }
         }
 

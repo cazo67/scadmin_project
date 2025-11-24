@@ -6,6 +6,7 @@ import '../models/payment_model.dart' as payment_model; // Add prefix
 import '../services/payment_service.dart';
 import 'payment_confirmation_dialog.dart';
 import 'receipt_screen.dart';
+import 'upload_disclaimer_dialog.dart';
 
 /// HOME PAGE (Dashboard)
 /// Main screen after login - shows upload button and student management options
@@ -158,6 +159,72 @@ class _HomePageState extends State<HomePage> {
             backgroundColor: Colors.red,
           ),
         );
+      }
+    }
+  }
+
+  /// HANDLE CSV UPLOAD
+  /// Shows disclaimer then uploads CSV file
+  Future<void> _handleCsvUpload() async {
+    // Show disclaimer dialog first
+    final proceed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const UploadDisclaimerDialog(),
+    );
+
+    // User cancelled
+    if (proceed != true) return;
+
+    // Proceed with upload
+    setState(() => _isSearching = true);
+
+    try {
+      // Pick and parse CSV
+      final students = await CsvService.pickAndParseCsv();
+
+      // User cancelled file picker
+      if (students == null) {
+        setState(() => _isSearching = false);
+        return;
+      }
+
+      // Upload to database
+      await CsvService.uploadStudents(students);
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Successfully uploaded ${students.length} students'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+
+      // Clear current student display to refresh
+      setState(() {
+        _currentStudent = null;
+        _studentFeePayment = null;
+        _studentFinesPayment = null;
+        _inputDisplay = '';
+        _studentIdController.clear();
+      });
+
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Upload failed: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSearching = false);
       }
     }
   }
@@ -897,9 +964,21 @@ class _HomePageState extends State<HomePage> {
                 _signOut();
               } else if (value == 'test_data') {
                 _createTestData();
+              } else if (value == 'upload_csv') {
+                _handleCsvUpload();
               }
             },
             itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'upload_csv',
+                child: Row(
+                  children: [
+                    Icon(Icons.upload_file, color: Colors.blue),
+                    SizedBox(width: 8),
+                    Text('Upload CSV'),
+                  ],
+                ),
+              ),
               const PopupMenuItem(
                 value: 'test_data',
                 child: Row(
