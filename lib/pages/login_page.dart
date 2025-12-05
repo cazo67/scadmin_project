@@ -94,7 +94,7 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 8),
 
                 Text(
-                  'Sign in to manage student payments',
+                  'Log in in to manage student payments',
                   style: TextStyle(color: Colors.grey[600], fontSize: 14),
                   textAlign: TextAlign.center,
                 ),

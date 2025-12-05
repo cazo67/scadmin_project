@@ -1,11 +1,11 @@
 class Payment {
   final String id;
-  final String receiptNumber;      // 6-digit OR number (e.g., "2022301108")
+  final String receiptNumber; // 6-digit OR number (e.g., "2022301108")
   final String studentId;
   final String studentName;
-  final String paymentType;        // "Fee" or "Fines"
+  final String paymentType; // "Fee" or "Fines"
   final double amount;
-  final String yearLevel;          
+  final String yearLevel;
   final DateTime paymentDate;
   final DateTime createdAt;
 
@@ -29,14 +29,19 @@ class Payment {
       studentId: json['student_id']?.toString() ?? '',
       studentName: json['student_name']?.toString() ?? '',
       paymentType: json['payment_type']?.toString() ?? '',
-      amount: (json['amount'] is int) 
-          ? (json['amount'] as int).toDouble() 
+      amount: (json['amount'] is int)
+          ? (json['amount'] as int).toDouble()
           : (json['amount'] as double?) ?? 0.0,
       yearLevel: json['year_level']?.toString() ?? '',
-      paymentDate: DateTime.parse(json['payment_date']),
-      createdAt: DateTime.parse(json['created_at']),
+      paymentDate: json['payment_date'] != null
+          ? DateTime.parse(json['payment_date'].toString())
+          : DateTime.now(),
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'].toString())
+          : DateTime.now(),
     );
   }
+
   /// TO JSON (for Supabase)
   Map<String, dynamic> toJson() {
     return {
@@ -49,6 +54,7 @@ class Payment {
       'payment_date': paymentDate.toIso8601String(),
     };
   }
+
   /// FORMAT RECEIPT NUMBER
   /// Ensures 6-digit format with leading zeros (e.g., 2031 → "002031")
   static String formatReceiptNumber(int counter) {

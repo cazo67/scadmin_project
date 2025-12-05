@@ -31,6 +31,7 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     // Listen to text changes for live search
     _studentIdController.addListener(_onSearchTextChanged);
+    _loadRecentTransactions();
   }
 
   // INPUT STATE
@@ -44,6 +45,13 @@ class _HomePageState extends State<HomePage> {
 
   payment_model.Payment? _studentFeePayment;
   payment_model.Payment? _studentFinesPayment;
+
+  // PAYABLES SELECTION STATE
+  final Map<String, bool> _selectedPayables = {};
+  double _totalSelected = 0.0;
+
+  // RECENT TRANSACTIONS STATE
+  List<payment_model.Payment> _recentTransactions = [];
   @override
   void dispose() {
     _debounceTimer?.cancel();
@@ -122,6 +130,9 @@ class _HomePageState extends State<HomePage> {
   /// SELECT STUDENT FROM SEARCH RESULTS
   /// Loads selected student and clears search results
   void _selectStudent(Student student) {
+    // Remove listener temporarily to prevent triggering search
+    _studentIdController.removeListener(_onSearchTextChanged);
+
     setState(() {
       _currentStudent = student;
       _studentFeePayment = null;
@@ -130,8 +141,93 @@ class _HomePageState extends State<HomePage> {
       _studentIdController.text = student.id;
       _searchResults = [];
       _showSearchResults = false;
+      _selectedPayables.clear();
+      _totalSelected = 0.0;
     });
+
     _searchFocusNode.unfocus();
+
+    // Re-add listener after a short delay
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) {
+        _studentIdController.addListener(_onSearchTextChanged);
+      }
+    });
+  }
+
+  /// LOAD RECENT TRANSACTIONS
+  /// Fetches the 10 most recent payments
+  Future<void> _loadRecentTransactions() async {
+    try {
+      final user = supabase.auth.currentUser;
+      final orgId = user?.userMetadata?['organization_id'];
+
+      if (orgId == null) {
+        print('No organization ID found for user');
+        return;
+      }
+
+      final response = await supabase
+          .from('payments')
+          .select()
+          .eq('organization_id', orgId)
+          .order('created_at', ascending: false)
+          .limit(10);
+
+      if (mounted && response != null) {
+        setState(() {
+          _recentTransactions = (response as List)
+              .map((json) => payment_model.Payment.fromJson(json))
+              .toList();
+        });
+        print('✅ Loaded ${_recentTransactions.length} recent transactions');
+      }
+    } catch (e) {
+      print('❌ Error loading recent transactions: $e');
+      if (mounted) {
+        setState(() {
+          _recentTransactions = [];
+        });
+      }
+    }
+  }
+
+  /// TOGGLE PAYABLE SELECTION
+  void _togglePayableSelection(String key, double amount) {
+    setState(() {
+      _selectedPayables[key] = !(_selectedPayables[key] ?? false);
+      _calculateTotal();
+    });
+  }
+
+  /// SELECT ALL PAYABLES
+  void _selectAllPayables() {
+    if (_currentStudent == null) return;
+    setState(() {
+      _selectedPayables['fee'] = _currentStudent!.outstandingFee > 0;
+      _selectedPayables['fines'] = _currentStudent!.outstandingFines > 0;
+      _calculateTotal();
+    });
+  }
+
+  /// CALCULATE TOTAL SELECTED
+  void _calculateTotal() {
+    double total = 0.0;
+    if (_currentStudent != null) {
+      if (_selectedPayables['fee'] == true)
+        total += _currentStudent!.outstandingFee;
+      if (_selectedPayables['fines'] == true)
+        total += _currentStudent!.outstandingFines;
+    }
+    _totalSelected = total;
+  }
+
+  /// CLEAR SELECTION
+  void _clearSelection() {
+    setState(() {
+      _selectedPayables.clear();
+      _totalSelected = 0.0;
+    });
   }
 
   /// SEARCH STUDENT BY ID
@@ -151,7 +247,12 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    setState(() => _isSearching = true);
+    // Clear search results dropdown immediately
+    setState(() {
+      _isSearching = true;
+      _searchResults = [];
+      _showSearchResults = false;
+    });
 
     try {
       // Query Supabase for student with matching ID
@@ -191,6 +292,8 @@ class _HomePageState extends State<HomePage> {
           _currentStudent = Student.fromJson(response);
           _studentFeePayment = null; // Add this line
           _studentFinesPayment = null; // Add this line
+          _selectedPayables.clear();
+          _totalSelected = 0.0;
         });
       }
     } catch (e) {
@@ -437,7 +540,6 @@ class _HomePageState extends State<HomePage> {
     // Process payment
     try {
       // Show loading
-      // Hide loading and show success
       if (!mounted) return;
       ScaffoldMessenger.of(context).clearSnackBars();
 
@@ -449,18 +551,7 @@ class _HomePageState extends State<HomePage> {
         yearLevel: _currentStudent!.yearLevel ?? '1st Year',
       );
 
-      // Navigate to receipt screen
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) =>
-              ReceiptScreen(payment: payment, student: _currentStudent!),
-        ),
-      );
-
-      // Process payment through service
-
-      // Update state with payment info
+      // Update state with payment info BEFORE navigating
       setState(() {
         if (paymentType == 'Fee') {
           _studentFeePayment = payment;
@@ -489,13 +580,14 @@ class _HomePageState extends State<HomePage> {
             outstandingUnpaidBalance: _currentStudent!.outstandingUnpaidBalance,
           );
         }
+        // Clear selections after payment
+        _selectedPayables.clear();
+        _totalSelected = 0.0;
       });
 
-      // Hide loading and navigate to receipt screen
+      // Navigate to receipt screen
       if (!mounted) return;
-      ScaffoldMessenger.of(context).clearSnackBars();
-
-      Navigator.push(
+      await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) =>
@@ -503,38 +595,10 @@ class _HomePageState extends State<HomePage> {
         ),
       );
 
-      // Update state with payment info
-      setState(() {
-        if (paymentType == 'Fee') {
-          _studentFeePayment = payment;
-          _currentStudent = Student(
-            id: _currentStudent!.id,
-            lastName: _currentStudent!.lastName,
-            firstName: _currentStudent!.firstName,
-            college: _currentStudent!.college,
-            program: _currentStudent!.program,
-            yearLevel: _currentStudent!.yearLevel,
-            outstandingFee: 0.0, // Paid
-            outstandingFines: _currentStudent!.outstandingFines,
-            outstandingUnpaidBalance: _currentStudent!.outstandingUnpaidBalance,
-          );
-        } else {
-          _studentFinesPayment = payment;
-          _currentStudent = Student(
-            id: _currentStudent!.id,
-            lastName: _currentStudent!.lastName,
-            firstName: _currentStudent!.firstName,
-            college: _currentStudent!.college,
-            program: _currentStudent!.program,
-            yearLevel: _currentStudent!.yearLevel,
-            outstandingFee: _currentStudent!.outstandingFee,
-            outstandingFines: 0.0, // Paid
-            outstandingUnpaidBalance: _currentStudent!.outstandingUnpaidBalance,
-          );
-        }
-      });
+      // Reload recent transactions to show the new payment
+      await _loadRecentTransactions();
 
-      // Hide loading and show success
+      // Show success message after returning from receipt screen
       if (!mounted) return;
       ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -544,8 +608,6 @@ class _HomePageState extends State<HomePage> {
           duration: const Duration(seconds: 4),
         ),
       );
-
-      // TODO: Show receipt screen (we'll add this next)
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).clearSnackBars();
@@ -1029,6 +1091,8 @@ class _HomePageState extends State<HomePage> {
                                           fontWeight: FontWeight.w600,
                                           color: Color(0xFF1B5E20),
                                         ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
@@ -1037,6 +1101,8 @@ class _HomePageState extends State<HomePage> {
                                           fontSize: 12,
                                           color: Colors.grey[600],
                                         ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ],
                                   ),
@@ -1171,6 +1237,531 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  /// BUILD RECENT TRANSACTIONS SIDEBAR
+  Widget _buildRecentTransactionsSidebar() {
+    return Container(
+      width: 250,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(right: BorderSide(color: Colors.grey[300]!, width: 1.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: Colors.grey[300]!, width: 1.5),
+              ),
+            ),
+            child: const Text(
+              'RECENT TRANSACTIONS',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          Expanded(
+            child: _recentTransactions.isEmpty
+                ? const Center(
+                    child: Text(
+                      'No transactions yet',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  )
+                : ListView.separated(
+                    itemCount: _recentTransactions.length,
+                    separatorBuilder: (context, index) =>
+                        const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final payment = _recentTransactions[index];
+                      final time = payment.createdAt;
+                      final timeStr =
+                          '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')} ${time.hour >= 12 ? 'PM' : 'AM'}';
+
+                      return Container(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              payment.studentName.isNotEmpty
+                                  ? payment.studentName
+                                  : payment.studentId,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '$timeStr • ID: ${payment.studentId}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[600],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Paid ₱ ${payment.amount.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1B5E20),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// BUILD NEW STUDENT PROFILE CARD
+  Widget _buildNewStudentProfileCard() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[300]!, width: 1.5),
+      ),
+      child: Column(
+        children: [
+          // Header
+          const Text(
+            'Student Profile',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF2D5016),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Content
+          _currentStudent == null
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 40),
+                  child: Column(
+                    children: [
+                      // Avatar placeholder
+                      Container(
+                        width: 140,
+                        height: 140,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F5F5),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.person,
+                          size: 70,
+                          color: Colors.grey[400],
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      // No student text
+                      const Text(
+                        'NO STUDENT SELECTED',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                          letterSpacing: 0.5,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      // Placeholder ID
+                      Text(
+                        'ID: --',
+                        style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 8),
+                      // Placeholder dashes
+                      Text(
+                        '--',
+                        style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '--',
+                        style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 24),
+                      // Status badge placeholder
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE0E0E0),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          'Waiting for input',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  child: Column(
+                    children: [
+                      // Avatar
+                      Container(
+                        width: 140,
+                        height: 140,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFD4E8D4),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.person,
+                          size: 70,
+                          color: Color(0xFF2D5016),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      // Name
+                      Text(
+                        '${_currentStudent!.lastName.toUpperCase()}, ${_currentStudent!.firstName.toUpperCase()}',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      // ID
+                      Text(
+                        'ID: ${_currentStudent!.id}',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                      ),
+                      const SizedBox(height: 6),
+                      // Program
+                      Text(
+                        _currentStudent!.program ?? '',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.black87,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 4),
+                      // Year/College
+                      Text(
+                        '${_currentStudent!.yearLevel ?? ''} / ${_currentStudent!.college ?? ''}',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 20),
+                      // Status badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD4E8D4),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          'Active / Enrolled',
+                          style: TextStyle(
+                            color: Color(0xFF2D5016),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+        ],
+      ),
+    );
+  }
+
+  /// BUILD OUTSTANDING PAYABLES TABLE
+  Widget _buildOutstandingPayablesTable() {
+    final bool hasStudent = _currentStudent != null;
+    final payables = hasStudent
+        ? [
+            {
+              'key': 'fee',
+              'desc': 'College Fee (1st Sem)',
+              'amount': _currentStudent!.outstandingFee,
+            },
+            {
+              'key': 'fines',
+              'desc': 'Late Registration Fine',
+              'amount': _currentStudent!.outstandingFines,
+            },
+          ]
+        : [];
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[300]!, width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Outstanding Payables',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF2D5016),
+                ),
+              ),
+              TextButton(
+                onPressed: hasStudent ? _selectAllPayables : null,
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF4CAF50),
+                  padding: EdgeInsets.zero,
+                ),
+                child: const Text(
+                  'Select All',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Content Area
+          !hasStudent
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 100),
+                  child: Center(
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.receipt_long_outlined,
+                          size: 80,
+                          color: Colors.grey[300],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Scan a student ID to view payables',
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : Column(
+                  children: [
+                    // Column Headers
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12, top: 8),
+                      child: Row(
+                        children: [
+                          const SizedBox(width: 40),
+                          const Expanded(
+                            child: Text(
+                              'Description',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black54,
+                              ),
+                            ),
+                          ),
+                          const Text(
+                            'Amount',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Table Rows
+                    ...payables.map((item) {
+                      final isSelected =
+                          _selectedPayables[item['key'] as String] ?? false;
+                      final amount = item['amount'] as double;
+
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 40,
+                              child: Checkbox(
+                                value: isSelected,
+                                onChanged: amount > 0
+                                    ? (val) => _togglePayableSelection(
+                                        item['key'] as String,
+                                        amount,
+                                      )
+                                    : null,
+                                activeColor: const Color(0xFF1B5E20),
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                item['desc'] as String,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              amount > 0
+                                  ? '₱ ${amount.toStringAsFixed(2)}'
+                                  : '₱ ${amount.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: item['key'] == 'fines' && amount > 0
+                                    ? Colors.red
+                                    : Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ],
+                ),
+
+          // Footer with Total and Button
+          const SizedBox(height: 24),
+          const Divider(height: 1, thickness: 1),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Total Selected',
+                    style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '₱ ${_totalSelected.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w600,
+                      color: _totalSelected > 0
+                          ? const Color(0xFF2D5016)
+                          : Colors.grey[400],
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                ],
+              ),
+              ElevatedButton(
+                onPressed: _totalSelected > 0
+                    ? () => _proceedPayment('Fee')
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _totalSelected > 0
+                      ? const Color(0xFFFFC107)
+                      : Colors.grey[300],
+                  foregroundColor: Colors.black87,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 48,
+                    vertical: 20,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  'Process Payment',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// BUILD NEW SEARCH BAR (centered, larger)
+  Widget _buildNewSearchBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Row(
+        children: [
+          const Icon(Icons.search, color: Colors.grey, size: 28),
+          const SizedBox(width: 12),
+          Expanded(
+            child: TextField(
+              controller: _studentIdController,
+              focusNode: _searchFocusNode,
+              decoration: const InputDecoration(
+                hintText: 'Enter Student ID',
+                hintStyle: TextStyle(fontSize: 20, color: Colors.grey),
+                border: InputBorder.none,
+              ),
+              style: const TextStyle(fontSize: 20),
+              onSubmitted: (_) => _searchStudent(),
+              onChanged: (value) {
+                setState(() {
+                  _inputDisplay = value;
+                });
+              },
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: const Text(
+              'Press Enter',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// MOBILE LAYOUT (existing vertical layout)
   Widget _buildMobileLayout() {
     return SingleChildScrollView(
@@ -1189,34 +1780,148 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  /// DESKTOP LAYOUT (side-by-side layout)
-  /// DESKTOP LAYOUT (side-by-side layout like your image)
+  /// NEW DESKTOP LAYOUT (matching the pasted image)
   Widget _buildDesktopLayout() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0), // Reduced from 24
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // LEFT SIDE: Student info and payment buttons
-          Expanded(
-            flex: 3, // Changed from 2 to 3 (takes more space)
-            child: Column(
+    return Row(
+      children: [
+        // LEFT SIDEBAR: Recent Transactions
+        _buildRecentTransactionsSidebar(),
+
+        // MAIN CONTENT
+        Expanded(
+          child: Container(
+            color: Colors.grey[50],
+            child: Stack(
               children: [
-                _buildStudentInfoCard(),
-                const SizedBox(height: 12), // Reduced from 16
-                _buildPaymentButtons(),
+                Column(
+                  children: [
+                    // SEARCH BAR (top)
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border(
+                          bottom: BorderSide(
+                            color: Colors.grey[300]!,
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                      child: _buildNewSearchBar(),
+                    ),
+
+                    // TWO COLUMN GRID (Profile | Payables)
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // LEFT: Student Profile
+                            Expanded(
+                              flex: 2,
+                              child: _buildNewStudentProfileCard(),
+                            ),
+                            const SizedBox(width: 24),
+                            // RIGHT: Outstanding Payables
+                            Expanded(
+                              flex: 3,
+                              child: _buildOutstandingPayablesTable(),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                // SEARCH RESULTS DROPDOWN (overlaid)
+                if (_showSearchResults && _searchResults.isNotEmpty)
+                  Positioned(
+                    top: 70, // Position below search bar
+                    left: 24,
+                    right: 24,
+                    child: Container(
+                      constraints: const BoxConstraints(maxHeight: 250),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border.all(
+                          color: const Color(0xFF1B5E20),
+                          width: 2,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          itemCount: _searchResults.length,
+                          separatorBuilder: (context, index) =>
+                              Divider(height: 1, color: Colors.grey[200]),
+                          itemBuilder: (context, index) {
+                            final student = _searchResults[index];
+                            return InkWell(
+                              onTap: () => _selectStudent(student),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            '${student.id} - ${student.lastName}, ${student.firstName}',
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF1B5E20),
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            '${student.college ?? 'N/A'} - ${student.program ?? 'N/A'}',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey[600],
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const Icon(
+                                      Icons.arrow_forward_ios,
+                                      size: 16,
+                                      color: Color(0xFF1B5E20),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
-
-          const SizedBox(width: 16), // Reduced from 24
-          // RIGHT SIDE: Search and keypad
-          Expanded(
-            flex: 2, // Changed from 1 to 2 (takes more space)
-            child: _buildSearchAndKeypad(),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -1235,38 +1940,27 @@ class _HomePageState extends State<HomePage> {
           children: [
             // Organization logo placeholder
             Container(
-              width: 40,
-              height: 40,
+              width: 32,
+              height: 32,
               decoration: const BoxDecoration(
                 color: Colors.white,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.school, color: Color(0xFF1B5E20)),
+              child: const Icon(
+                Icons.school,
+                color: Color(0xFF1B5E20),
+                size: 20,
+              ),
             ),
             const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  supabase
-                          .auth
-                          .currentUser
-                          ?.userMetadata?['organization_name'] ??
-                      'Organization',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white, // White text
-                  ),
-                ),
-                Text(
-                  supabase.auth.currentUser?.email ?? '',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Colors.white70, // Light white text
-                  ),
-                ),
-              ],
+            Text(
+              supabase.auth.currentUser?.userMetadata?['organization_name'] ??
+                  'CISC Cashier',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
           ],
         ),

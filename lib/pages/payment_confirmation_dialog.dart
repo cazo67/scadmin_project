@@ -32,6 +32,7 @@ class _PaymentConfirmationDialogState extends State<PaymentConfirmationDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
+      backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 600),
@@ -82,8 +83,9 @@ class _PaymentConfirmationDialogState extends State<PaymentConfirmationDialog> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.grey[100],
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300),
                     ),
                     child: Column(
                       children: [
