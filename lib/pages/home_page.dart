@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../main.dart';
 import '../models/student_model.dart';
@@ -25,15 +26,112 @@ class _HomePageState extends State<HomePage> {
   Student? _currentStudent;
   bool _isSearching = false;
 
+  @override
+  void initState() {
+    super.initState();
+    // Listen to text changes for live search
+    _studentIdController.addListener(_onSearchTextChanged);
+  }
+
   // INPUT STATE
   String _inputDisplay = ''; // Only this one stays
+
+  // LIVE SEARCH STATE
+  List<Student> _searchResults = [];
+  Timer? _debounceTimer;
+  bool _showSearchResults = false;
+  final FocusNode _searchFocusNode = FocusNode();
 
   payment_model.Payment? _studentFeePayment;
   payment_model.Payment? _studentFinesPayment;
   @override
   void dispose() {
-    _studentIdController.dispose(); // Clean up controller
+    _debounceTimer?.cancel();
+    _studentIdController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
+  }
+
+  /// HANDLE SEARCH TEXT CHANGES
+  /// Triggers live search with debouncing
+  void _onSearchTextChanged() {
+    final query = _studentIdController.text.trim();
+
+    // Cancel previous timer
+    _debounceTimer?.cancel();
+
+    // Clear results if input is empty
+    if (query.isEmpty) {
+      setState(() {
+        _searchResults = [];
+        _showSearchResults = false;
+      });
+      return;
+    }
+
+    // Set new timer for debounced search (300ms delay)
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+      _performLiveSearch(query);
+    });
+  }
+
+  /// PERFORM LIVE SEARCH
+  /// Searches for students matching the input query
+  Future<void> _performLiveSearch(String query) async {
+    if (query.isEmpty) return;
+
+    try {
+      final user = supabase.auth.currentUser;
+      final orgId = user?.userMetadata?['organization_id'];
+
+      print('🔍 Live search triggered for query: "$query"');
+
+      // Search for students whose ID starts with query OR name contains query
+      final response = await supabase
+          .from('students')
+          .select()
+          .eq('organization_id', orgId)
+          .or(
+            'id.ilike.$query%,last_name.ilike.%$query%,first_name.ilike.%$query%',
+          )
+          .limit(10);
+
+      if (mounted) {
+        setState(() {
+          _searchResults = (response as List)
+              .map((json) => Student.fromJson(json))
+              .toList();
+          _showSearchResults = _searchResults.isNotEmpty;
+          print(
+            '✅ Found ${_searchResults.length} results, showing dropdown: $_showSearchResults',
+          );
+        });
+      }
+    } catch (e) {
+      print('❌ Live search error: $e');
+      // Silently fail for live search
+      if (mounted) {
+        setState(() {
+          _searchResults = [];
+          _showSearchResults = false;
+        });
+      }
+    }
+  }
+
+  /// SELECT STUDENT FROM SEARCH RESULTS
+  /// Loads selected student and clears search results
+  void _selectStudent(Student student) {
+    setState(() {
+      _currentStudent = student;
+      _studentFeePayment = null;
+      _studentFinesPayment = null;
+      _inputDisplay = student.id;
+      _studentIdController.text = student.id;
+      _searchResults = [];
+      _showSearchResults = false;
+    });
+    _searchFocusNode.unfocus();
   }
 
   /// SEARCH STUDENT BY ID
@@ -244,9 +342,10 @@ class _HomePageState extends State<HomePage> {
   /// Adds number to input display and controller
   void _onKeypadPressed(String value) {
     setState(() {
-      _inputDisplay += value; // Add number to display
-      _studentIdController.text = _inputDisplay; // Update controller
+      _inputDisplay += value;
+      _studentIdController.text = _inputDisplay;
     });
+    // Live search will trigger automatically via controller listener
   }
 
   /// CLEAR INPUT
@@ -256,8 +355,10 @@ class _HomePageState extends State<HomePage> {
       _inputDisplay = '';
       _studentIdController.clear();
       _currentStudent = null;
-      _studentFeePayment = null; // Add this line
-      _studentFinesPayment = null; // Add this line
+      _studentFeePayment = null;
+      _studentFinesPayment = null;
+      _searchResults = [];
+      _showSearchResults = false;
     });
   }
 
@@ -801,61 +902,162 @@ class _HomePageState extends State<HomePage> {
       ),
       child: Column(
         children: [
-          // INPUT FIELD ROW
-          Row(
+          // INPUT FIELD ROW WITH SEARCH RESULTS
+          Column(
             children: [
-              // Text input field
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey[400]!),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    _inputDisplay.isEmpty ? 'Enter Student ID' : _inputDisplay,
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: _inputDisplay.isEmpty ? Colors.grey : Colors.black,
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(width: 8),
-
-              // SEARCH BUTTON (Green)
-              SizedBox(
-                width: 60,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: _isSearching ? null : _searchStudent,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1B5E20),
-                    padding: EdgeInsets.zero,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: _isSearching
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
+              Row(
+                children: [
+                  // Text input field
+                  Expanded(
+                    child: TextField(
+                      controller: _studentIdController,
+                      focusNode: _searchFocusNode,
+                      decoration: InputDecoration(
+                        hintText: 'Enter Student ID',
+                        hintStyle: const TextStyle(
+                          fontSize: 18,
+                          color: Colors.grey,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey[400]!),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey[400]!),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF1B5E20),
+                            width: 2,
                           ),
-                        )
-                      : const Icon(Icons.search, color: Colors.white),
-                ),
+                        ),
+                      ),
+                      style: const TextStyle(fontSize: 18),
+                      keyboardType: TextInputType.text,
+                      onSubmitted: (_) => _searchStudent(),
+                      onChanged: (value) {
+                        setState(() {
+                          _inputDisplay = value;
+                        });
+                      },
+                    ),
+                  ),
+
+                  const SizedBox(width: 8),
+
+                  // SEARCH BUTTON (Green)
+                  SizedBox(
+                    width: 60,
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: _isSearching ? null : _searchStudent,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1B5E20),
+                        padding: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: _isSearching
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.search, color: Colors.white),
+                    ),
+                  ),
+                ],
               ),
+
+              // SEARCH RESULTS DROPDOWN (positioned after input)
+              if (_showSearchResults && _searchResults.isNotEmpty)
+                Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  constraints: const BoxConstraints(maxHeight: 250),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(
+                      color: const Color(0xFF1B5E20),
+                      width: 2,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: _searchResults.length,
+                      separatorBuilder: (context, index) =>
+                          Divider(height: 1, color: Colors.grey[200]),
+                      itemBuilder: (context, index) {
+                        final student = _searchResults[index];
+                        return InkWell(
+                          onTap: () => _selectStudent(student),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '${student.id} - ${student.lastName}, ${student.firstName}',
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF1B5E20),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${student.college ?? 'N/A'} - ${student.program ?? 'N/A'}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(
+                                  Icons.arrow_forward_ios,
+                                  size: 16,
+                                  color: Color(0xFF1B5E20),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
             ],
           ),
 
-          const SizedBox(height: 4),
+          const SizedBox(height: 16),
 
           // NUMERIC KEYPAD
           _buildKeypad(),
