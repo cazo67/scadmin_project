@@ -3,11 +3,12 @@ import '../main.dart';
 import '../models/student_model.dart';
 import '../services/csv_service.dart';
 import '../models/payment_model.dart' as payment_model; // Add prefix
+
 import '../services/payment_service.dart';
 import 'payment_confirmation_dialog.dart';
 import 'receipt_screen.dart';
 import 'upload_disclaimer_dialog.dart';
-
+import 'reports_page.dart';  // Add this line
 /// HOME PAGE (Dashboard)
 /// Main screen after login - shows upload button and student management options
 class HomePage extends StatefulWidget {
@@ -56,11 +57,17 @@ class _HomePageState extends State<HomePage> {
 
     try {
       // Query Supabase for student with matching ID
+      // Get current user's organization ID
+      final user = supabase.auth.currentUser;
+      final orgId = user?.userMetadata?['organization_id'];
+
+      // Query Supabase for student with matching ID
       final response = await supabase
           .from('students')
           .select()
-          .eq('id', studentId) // 'eq' means equals - exact match
-          .maybeSingle(); // Returns one record or null
+          .eq('id', studentId)
+          .eq('organization_id', orgId)  // Add this line - filter by organization
+          .maybeSingle();
 
       // Check if student found
       if (response == null) {
@@ -81,6 +88,8 @@ class _HomePageState extends State<HomePage> {
         // Student found - convert JSON to Student object
         setState(() {
           _currentStudent = Student.fromJson(response);
+          _studentFeePayment = null;    // Add this line
+          _studentFinesPayment = null;  // Add this line
         });
       }
     } catch (e) {
@@ -96,7 +105,9 @@ class _HomePageState extends State<HomePage> {
     } finally {
       setState(() => _isSearching = false);
     }
-}
+
+
+ }
   
     /// CREATE TEST DATA
   /// Adds sample students to database for testing
@@ -241,12 +252,14 @@ class _HomePageState extends State<HomePage> {
   /// CLEAR INPUT
   /// Resets input field and clears loaded student
   void _onClearPressed() {
-    setState(() {
-      _inputDisplay = '';
-      _studentIdController.clear();
-      _currentStudent = null; // Clear loaded student info
-    });
-  }
+  setState(() {
+    _inputDisplay = '';
+    _studentIdController.clear();
+    _currentStudent = null;
+    _studentFeePayment = null;    // Add this line
+    _studentFinesPayment = null;  // Add this line
+  });
+ }
 
   /// BACKSPACE
   /// Removes last character from input
@@ -259,7 +272,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-/// PROCEED TO PAYMENT
+ /// PROCEED TO PAYMENT
   /// Shows confirmation dialog and processes payment
   Future<void> _proceedPayment(String paymentType) async {
     // Validate student is loaded
@@ -468,11 +481,21 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  /// OPEN REPORTS PAGE
+  Future<void> _openReports() async {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ReportsPage(),
+      ),
+    );
+  }
+
   /// BUILD STUDENT INFORMATION CARD
   /// Displays student details or empty placeholder
-  Widget _buildStudentInfoCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
+Widget _buildStudentInfoCard() {
+  return Container(
+    padding: const EdgeInsets.all(10),   
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -505,7 +528,7 @@ class _HomePageState extends State<HomePage> {
             children: [
               Text(
                 _currentStudent?.id ?? '000000000',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w500),
               ),
               // Year level badge
               Container(
@@ -533,16 +556,16 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
           
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           
           // Name
           Text(
             _currentStudent?.lastName ?? 'Last Name',
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
           ),
           Text(
             _currentStudent?.firstName ?? 'First Name Second Name',
-            style: const TextStyle(fontSize: 16),
+            style: const TextStyle(fontSize: 20),
           ),
           
           const SizedBox(height: 4),
@@ -551,13 +574,13 @@ class _HomePageState extends State<HomePage> {
           Text(
             '${_currentStudent?.college ?? 'CAS'} - ${_currentStudent?.program ?? 'BS Information Technology'}',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 16,
               fontStyle: FontStyle.italic,
               color: Colors.blue[700],
             ),
           ),
           
-          const Divider(height: 24),
+          const Divider(height: 12),
           
           // Student number label
           const Text(
@@ -565,7 +588,7 @@ class _HomePageState extends State<HomePage> {
             style: TextStyle(fontSize: 12, color: Colors.grey),
           ),
           
-          const SizedBox(height: 16),
+          const SizedBox(height: 4),
           
           // Outstanding amounts
           Row(
@@ -581,7 +604,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 4),
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey),
                         borderRadius: BorderRadius.circular(8),
@@ -623,13 +646,13 @@ class _HomePageState extends State<HomePage> {
                               children: [
                                 const Text(
                                   '₱',
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
                                   _currentStudent?.outstandingFee.toStringAsFixed(2) ?? '0.00',
                                   style: const TextStyle(
-                                    fontSize: 24,
+                                    fontSize: 32,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -656,7 +679,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 4),
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey),
                         borderRadius: BorderRadius.circular(8),
@@ -665,13 +688,13 @@ class _HomePageState extends State<HomePage> {
                         children: [
                           const Text(
                             '₱',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(width: 8),
                           Text(
                             _currentStudent?.outstandingFines.toStringAsFixed(2) ?? '0.00',
                             style: const TextStyle(
-                              fontSize: 24,
+                              fontSize: 32,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -813,7 +836,7 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
           
-          const SizedBox(height: 16),
+          const SizedBox(height: 4),
           
           // NUMERIC KEYPAD
           _buildKeypad(),
@@ -829,15 +852,15 @@ class _HomePageState extends State<HomePage> {
       children: [
         // Row 1: 7, 8, 9
         _buildKeypadRow(['7', '8', '9']),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         
         // Row 2: 4, 5, 6
         _buildKeypadRow(['4', '5', '6']),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         
         // Row 3: 1, 2, 3
         _buildKeypadRow(['1', '2', '3']),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         
         // Row 4: Clear, 0, Backspace
         Row(
@@ -904,7 +927,7 @@ class _HomePageState extends State<HomePage> {
       style: ElevatedButton.styleFrom(
         backgroundColor: backgroundColor ?? const Color(0xFF1B5E20), // Dark green default
         foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 20),
+        padding: const EdgeInsets.symmetric(vertical: 24),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         ),
@@ -912,15 +935,69 @@ class _HomePageState extends State<HomePage> {
       child: Text(
         label,
         style: const TextStyle(
-          fontSize: 24,
+          fontSize: 28,
           fontWeight: FontWeight.bold,
         ),
       ),
     );
   }
 
+
+  /// MOBILE LAYOUT (existing vertical layout)
+  Widget _buildMobileLayout() {
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            _buildStudentInfoCard(),
+            const SizedBox(height: 8),
+            _buildPaymentButtons(),
+            const SizedBox(height: 8),
+            _buildSearchAndKeypad(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// DESKTOP LAYOUT (side-by-side layout)
+  /// DESKTOP LAYOUT (side-by-side layout like your image)
+Widget _buildDesktopLayout() {
+  return Padding(
+    padding: const EdgeInsets.all(16.0),  // Reduced from 24
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // LEFT SIDE: Student info and payment buttons
+        Expanded(
+          flex: 3,  // Changed from 2 to 3 (takes more space)
+          child: Column(
+            children: [
+              _buildStudentInfoCard(),
+              const SizedBox(height: 12),  // Reduced from 16
+              _buildPaymentButtons(),
+            ],
+          ),
+        ),
+        
+        const SizedBox(width: 16),  // Reduced from 24
+        
+        // RIGHT SIDE: Search and keypad
+        Expanded(
+          flex: 2,  // Changed from 1 to 2 (takes more space)
+          child: _buildSearchAndKeypad(),
+        ),
+      ],
+    ),
+  );
+}
  @override
   Widget build(BuildContext context) {
+
+      // Detect screen size
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth > 800;  // Desktop if wider than 800px
     return Scaffold(
       backgroundColor: Colors.grey[100],
       
@@ -939,21 +1016,28 @@ class _HomePageState extends State<HomePage> {
               ),
               child: const Icon(Icons.school, color: Color(0xFF1B5E20)),
             ),
-            const SizedBox(width: 12),
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'ORG ABBREVIATION',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                supabase.auth.currentUser?.userMetadata?['organization_name'] ?? 'Organization',
+                style: const TextStyle(
+                  fontSize: 14, 
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,  // White text
                 ),
-                Text(
-                  'ORG ACRONYM',
-                  style: TextStyle(fontSize: 12),
+              ),
+              Text(
+                supabase.auth.currentUser?.email ?? '',
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: Colors.white70,  // Light white text
                 ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
+        ],
         ),
         actions: [
           // Three dots menu
@@ -966,9 +1050,21 @@ class _HomePageState extends State<HomePage> {
                 _createTestData();
               } else if (value == 'upload_csv') {
                 _handleCsvUpload();
+              } else if (value == 'reports') {
+                _openReports();
               }
             },
             itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'reports',
+                child: Row(
+                  children: [
+                    Icon(Icons.analytics, color: Colors.orange),
+                    SizedBox(width: 8),
+                    Text('View Reports'),
+                  ],
+                ),
+              ),
               const PopupMenuItem(
                 value: 'upload_csv',
                 child: Row(
@@ -1004,27 +1100,9 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
 
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              // STUDENT INFORMATION CARD
-              _buildStudentInfoCard(),
-              
-              const SizedBox(height: 16),
-              
-              // PAYMENT BUTTONS
-              _buildPaymentButtons(),
-              
-              const SizedBox(height: 16),
-              
-              // SEARCH INPUT AND KEYPAD
-              _buildSearchAndKeypad(),
-            ],
-          ),
-        ),
-      ),
+      body: isDesktop 
+        ? _buildDesktopLayout()
+        : _buildMobileLayout(),
     );
   }
 }

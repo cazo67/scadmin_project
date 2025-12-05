@@ -117,17 +117,17 @@ class ReceiptScreen extends StatelessWidget {
               children: [
                 Text(
                   'Central Mindanao University',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                   textAlign: TextAlign.center,
                 ),
                 Text(
                   'College of Information Sciences & Computing',
-                  style: TextStyle(fontSize: 14),
+                  style: TextStyle(fontSize: 11),
                   textAlign: TextAlign.center,
                 ),
                 Text(
                   'Student Council Organization (CSCO)',
-                  style: TextStyle(fontSize: 14),
+                  style: TextStyle(fontSize: 11),
                   textAlign: TextAlign.center,
                 ),
                 Text(
@@ -138,7 +138,7 @@ class ReceiptScreen extends StatelessWidget {
                 SizedBox(height: 4),
                 Text(
                   'A.Y. 2025-2026 - 2nd Semester',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
                   textAlign: TextAlign.center,
                 ),
               ],

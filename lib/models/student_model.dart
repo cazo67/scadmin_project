@@ -92,7 +92,6 @@ class Student {
     );
   }
 
-
   // CALCULATED: Total amount owed
   double get totalOwed => outstandingFee + outstandingFines + outstandingUnpaidBalance;
 

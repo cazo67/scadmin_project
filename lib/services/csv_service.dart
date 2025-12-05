@@ -3,6 +3,7 @@ import 'package:csv/csv.dart';
 import 'dart:convert';
 import '../models/student_model.dart';
 import '../main.dart';
+import 'dart:io';  // Add this line
 
 /// CSV SERVICE
 /// Handles all CSV file operations: picking, parsing, validating, and uploading
@@ -70,14 +71,20 @@ class CsvService {
       // User cancelled file picker
       if (result == null) return null;
 
-      // STEP 2: Read file content as bytes
-      final bytes = result.files.first.bytes;
-      if (bytes == null) {
+      // STEP 2: Read file content
+      String csvString;
+
+      if (result.files.first.bytes != null) {
+        // Web/Desktop - use bytes
+        final bytes = result.files.first.bytes!;
+        csvString = utf8.decode(bytes);
+      } else if (result.files.first.path != null) {
+        // Mobile - use path
+        final file = File(result.files.first.path!);
+        csvString = await file.readAsString();
+      } else {
         throw Exception('Could not read file content');
       }
-
-      // STEP 3: Convert bytes to string (CSV text)
-      final csvString = utf8.decode(bytes);
 
       // STEP 4: Parse CSV string into rows
       // Using csv package to handle proper CSV parsing (handles quotes, commas, etc.)
@@ -172,19 +179,42 @@ class CsvService {
 
   /// UPLOAD STUDENTS TO SUPABASE
   /// Inserts student records into the database
-  /// Uses upsert: updates if ID exists, inserts if new
+  /// ONLY adds new students, skips existing ones
   static Future<void> uploadStudents(List<Student> students) async {
     try {
-      // Convert Student objects to JSON for database
-      final List<Map<String, dynamic>> jsonData = 
-          students.map((s) => s.toJson()).toList();
+      // Get current user's organization ID
+      final user = supabase.auth.currentUser;
+      final orgId = user?.userMetadata?['organization_id'];
+      
+      if (orgId == null) {
+        throw Exception('No organization_id found for current user');
+      }
+      
+      // Get list of existing student IDs for this organization
+      final existingResponse = await supabase
+          .from('students')
+          .select('id')
+          .eq('organization_id', orgId);
+      
+      final existingIds = (existingResponse as List)
+          .map((row) => row['id'].toString())
+          .toSet();
+      
+      // Filter out students that already exist
+      final newStudents = students.where((s) => !existingIds.contains(s.id)).toList();
+      
+      if (newStudents.isEmpty) {
+        throw Exception('All students already exist in database. No new students to add.');
+      }
+      // Convert new students to JSON and add organization_id
+      final List<Map<String, dynamic>> jsonData = newStudents.map((s) {
+        final json = s.toJson();
+        json['organization_id'] = orgId;
+        return json;
+      }).toList();
 
-      // UPSERT to Supabase
-      // onConflict: 'id' - if student ID already exists, update instead of error
-      await supabase.from('students').upsert(
-        jsonData,
-        onConflict: 'id',
-      );
+      // INSERT only (if duplicate will)
+      await supabase.from('students').insert(jsonData);
 
     } catch (e) {
       throw Exception('Database upload error: $e');

@@ -7,18 +7,39 @@ import '../models/payment_model.dart';
 /// - Generate receipt numbers
 /// - Record payments in database
 /// - Update student balances
+
+
 class PaymentService {
+
+  /// GET CURRENT USER'S ORGANIZATION ID
+/// Fetches organization_id from user metadata
+static String _getCurrentOrganizationId() {
+  final user = supabase.auth.currentUser;
+  if (user == null) {
+    throw Exception('No user logged in');
+  }
+  
+  final orgId = user.userMetadata?['organization_id'];
+  if (orgId == null) {
+    throw Exception('User has no organization_id');
+  }
+  
+  return orgId.toString();
+  }
   
   /// GET NEXT RECEIPT NUMBER
   /// Fetches and increments the receipt counter from database
   /// Returns formatted 6-digit receipt number (e.g., "002031")
   static Future<String> getNextReceiptNumber() async {
     try {
-      // Fetch current counter
+      final orgId = _getCurrentOrganizationId();  // Get current org ID
+      
+      // Fetch current counter for THIS organization
       final response = await supabase
           .from('receipt_counter')
           .select('counter')
           .eq('id', 'receipt')
+          .eq('organization_id', orgId)  // Filter by organization
           .single();
 
       final currentCounter = response['counter'] as int;
@@ -28,7 +49,8 @@ class PaymentService {
       await supabase
           .from('receipt_counter')
           .update({'counter': nextCounter, 'updated_at': DateTime.now().toIso8601String()})
-          .eq('id', 'receipt');
+          .eq('id', 'receipt')
+          .eq('organization_id', orgId);  // Update only THIS organization
 
       // Format as 6-digit string with leading zeros
       return Payment.formatReceiptNumber(nextCounter);
@@ -51,6 +73,8 @@ class PaymentService {
       final receiptNumber = await getNextReceiptNumber();
 
       // STEP 2: Create payment record
+      final orgId = _getCurrentOrganizationId();  // Add this line
+
       final paymentData = {
         'receipt_number': receiptNumber,
         'student_id': student.id,
@@ -59,6 +83,7 @@ class PaymentService {
         'amount': amount,
         'year_level': yearLevel,
         'payment_date': DateTime.now().toIso8601String(),
+        'organization_id': orgId,  // Add this line
       };
 
       // Insert into payments table

@@ -29,12 +29,14 @@ class _PaymentConfirmationDialogState extends State<PaymentConfirmationDialog> {
   
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+@override
+Widget build(BuildContext context) {
+  return Dialog(
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 500),  // Add this - limits width to 500px
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(12.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -68,11 +70,11 @@ class _PaymentConfirmationDialogState extends State<PaymentConfirmationDialog> {
             
             // STUDENT INFO
             _buildInfoRow('Student Name:', widget.student.fullName),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             _buildInfoRow('Student ID:', widget.student.id),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             _buildInfoRow('Payment Type:', widget.paymentType),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             
             // AMOUNT (highlighted)
             Container(
@@ -101,16 +103,16 @@ class _PaymentConfirmationDialogState extends State<PaymentConfirmationDialog> {
               ),
             ),
             
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             
             // YEAR LEVEL (Display Only)
             _buildInfoRow('Year Level:', widget.student.yearLevel ?? 'N/A'),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             _buildInfoRow('College:', widget.student.college ?? 'N/A'),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             _buildInfoRow('Program:', widget.student.program ?? 'N/A'),
-            const SizedBox(height: 24),
-            
+            const SizedBox(height: 12),
+          
             // CONFIRM BUTTON
           // CONFIRM BUTTON
             ElevatedButton(
@@ -138,6 +140,7 @@ class _PaymentConfirmationDialogState extends State<PaymentConfirmationDialog> {
           ],
         ),
       ),
+    ),
     );
   }
 
@@ -146,14 +149,21 @@ class _PaymentConfirmationDialogState extends State<PaymentConfirmationDialog> {
   Widget _buildInfoRow(String label, String value) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,  // Add this line
       children: [
         Text(
           label,
-          style: const TextStyle(color: Colors.grey),
+          style: const TextStyle(color: Colors.grey, fontSize: 12),  // Made smaller
         ),
-        Text(
-          value,
-          style: const TextStyle(fontWeight: FontWeight.w500),
+        const SizedBox(width: 8),  // Add spacing
+        Expanded(  // Add this wrapper
+          child: Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),  // Made smaller
+            textAlign: TextAlign.right,  // Align to right
+            maxLines: 2,  // Allow 2 lines
+            overflow: TextOverflow.ellipsis,  // Add ... if still too long
+          ),
         ),
       ],
     );

@@ -1,13 +1,11 @@
-/// PAYMENT MODEL
-/// Represents a payment transaction with receipt information
 class Payment {
   final String id;
-  final String receiptNumber;      // 6-digit OR number (e.g., "002031")
+  final String receiptNumber;      // 6-digit OR number (e.g., "2022301108")
   final String studentId;
   final String studentName;
   final String paymentType;        // "Fee" or "Fines"
   final double amount;
-  final String yearLevel;          // Selected year level
+  final String yearLevel;          
   final DateTime paymentDate;
   final DateTime createdAt;
 
@@ -39,7 +37,6 @@ class Payment {
       createdAt: DateTime.parse(json['created_at']),
     );
   }
-
   /// TO JSON (for Supabase)
   Map<String, dynamic> toJson() {
     return {
@@ -52,10 +49,9 @@ class Payment {
       'payment_date': paymentDate.toIso8601String(),
     };
   }
-
   /// FORMAT RECEIPT NUMBER
   /// Ensures 6-digit format with leading zeros (e.g., 2031 → "002031")
   static String formatReceiptNumber(int counter) {
     return counter.toString().padLeft(6, '0');
   }
-}// TODO Implement this library.
+}
