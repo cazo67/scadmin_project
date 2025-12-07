@@ -48,7 +48,8 @@ dependencies:
   #1st: path: ^1.9.1
   path: ^1.8.3
   #stack_trace: ^1.12.1
-  url_launcher: ^6.3.2
+  #1st url_launcher: ^6.3.2
+  url_launcher: ^6.2.6
   web: ^1.1.1
   excel: ^4.0.6
   data_table_2: ^2.5.0
