@@ -8,7 +8,7 @@ import '../services/payment_service.dart';
 import 'payment_confirmation_dialog.dart';
 import 'receipt_screen.dart';
 import 'upload_disclaimer_dialog.dart';
-import 'reports_page.dart';  // Add this line
+
 /// HOME PAGE (Dashboard)
 /// Main screen after login - shows upload button and student management options
 class HomePage extends StatefulWidget {
@@ -23,10 +23,10 @@ class _HomePageState extends State<HomePage> {
   final _studentIdController = TextEditingController();
   Student? _currentStudent;
   bool _isSearching = false;
-  
+
   // INPUT STATE
   String _inputDisplay = ''; // Only this one stays
-  
+
   payment_model.Payment? _studentFeePayment;
   payment_model.Payment? _studentFinesPayment;
   @override
@@ -35,13 +35,12 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-
   /// SEARCH STUDENT BY ID
   /// Fetches student from database and displays their info
   Future<void> _searchStudent() async {
     // Get the ID from input
     final studentId = _studentIdController.text.trim();
-    
+
     // Validation: Check if ID is not empty
     if (studentId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -66,7 +65,10 @@ class _HomePageState extends State<HomePage> {
           .from('students')
           .select()
           .eq('id', studentId)
-          .eq('organization_id', orgId)  // Add this line - filter by organization
+          .eq(
+            'organization_id',
+            orgId,
+          ) // Add this line - filter by organization
           .maybeSingle();
 
       // Check if student found
@@ -80,7 +82,7 @@ class _HomePageState extends State<HomePage> {
             ),
           );
         }
-        
+
         setState(() {
           _currentStudent = null; // Clear loaded student
         });
@@ -88,8 +90,8 @@ class _HomePageState extends State<HomePage> {
         // Student found - convert JSON to Student object
         setState(() {
           _currentStudent = Student.fromJson(response);
-          _studentFeePayment = null;    // Add this line
-          _studentFinesPayment = null;  // Add this line
+          _studentFeePayment = null; // Add this line
+          _studentFinesPayment = null; // Add this line
         });
       }
     } catch (e) {
@@ -104,73 +106,6 @@ class _HomePageState extends State<HomePage> {
       }
     } finally {
       setState(() => _isSearching = false);
-    }
-
-
- }
-  
-    /// CREATE TEST DATA
-  /// Adds sample students to database for testing
-  /// This is temporary - we'll remove it later when CSV upload is ready
-  Future<void> _createTestData() async {
-    try {
-      // Sample students data
-      final testStudents = [
-        {
-          'id': '2021001',
-          'last_name': 'Dela Cruz',
-          'first_name': 'Juan',
-          'college': 'CCS',
-          'program': 'BSCS',
-          'year_level': '3',
-          'outstanding_fee': 1500.50,
-          'outstanding_fines': 200.0,
-          'outstanding_unpaid_balance': 100.25,
-        },
-        {
-          'id': '2021002',
-          'last_name': 'Santos',
-          'first_name': 'Maria',
-          'college': 'CBA',
-          'program': 'BSBA',
-          'year_level': '2',
-          'outstanding_fee': 2000.0,
-          'outstanding_fines': 0.0,
-          'outstanding_unpaid_balance': 500.0,
-        },
-        {
-          'id': '2021003',
-          'last_name': 'Reyes',
-          'first_name': 'Pedro',
-          'college': 'COED',
-          'program': 'BEED',
-          'year_level': '4',
-          'outstanding_fee': 1000.0,
-          'outstanding_fines': 150.75,
-          'outstanding_unpaid_balance': 0.0,
-        },
-      ];
-
-      // Insert into Supabase using upsert (won't create duplicates)
-      await supabase.from('students').upsert(testStudents);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Test data created successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to create test data: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     }
   }
 
@@ -222,7 +157,6 @@ class _HomePageState extends State<HomePage> {
         _inputDisplay = '';
         _studentIdController.clear();
       });
-
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -252,14 +186,14 @@ class _HomePageState extends State<HomePage> {
   /// CLEAR INPUT
   /// Resets input field and clears loaded student
   void _onClearPressed() {
-  setState(() {
-    _inputDisplay = '';
-    _studentIdController.clear();
-    _currentStudent = null;
-    _studentFeePayment = null;    // Add this line
-    _studentFinesPayment = null;  // Add this line
-  });
- }
+    setState(() {
+      _inputDisplay = '';
+      _studentIdController.clear();
+      _currentStudent = null;
+      _studentFeePayment = null; // Add this line
+      _studentFinesPayment = null; // Add this line
+    });
+  }
 
   /// BACKSPACE
   /// Removes last character from input
@@ -272,7 +206,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
- /// PROCEED TO PAYMENT
+  /// PROCEED TO PAYMENT
   /// Shows confirmation dialog and processes payment
   Future<void> _proceedPayment(String paymentType) async {
     // Validate student is loaded
@@ -287,8 +221,8 @@ class _HomePageState extends State<HomePage> {
     }
 
     // Get the amount based on payment type
-    final amount = paymentType == 'Fee' 
-        ? _currentStudent!.outstandingFee 
+    final amount = paymentType == 'Fee'
+        ? _currentStudent!.outstandingFee
         : _currentStudent!.outstandingFines;
 
     // Check if amount is zero
@@ -303,22 +237,23 @@ class _HomePageState extends State<HomePage> {
     }
 
     // Check if already paid
-    final existingPayment = paymentType == 'Fee' 
-        ? _studentFeePayment 
+    final existingPayment = paymentType == 'Fee'
+        ? _studentFeePayment
         : _studentFinesPayment;
 
     if (existingPayment != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('$paymentType already paid (OR: ${existingPayment.receiptNumber})'),
+          content: Text(
+            '$paymentType already paid (OR: ${existingPayment.receiptNumber})',
+          ),
           backgroundColor: Colors.blue,
         ),
       );
       return;
     }
 
-
-  // Show confirmation dialog
+    // Show confirmation dialog
     final confirmed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -338,7 +273,7 @@ class _HomePageState extends State<HomePage> {
       // Hide loading and show success
       if (!mounted) return;
       ScaffoldMessenger.of(context).clearSnackBars();
-      
+
       // Process payment through service
       final payment = await PaymentService.processPayment(
         student: _currentStudent!,
@@ -346,15 +281,13 @@ class _HomePageState extends State<HomePage> {
         amount: amount,
         yearLevel: _currentStudent!.yearLevel ?? '1st Year',
       );
-      
+
       // Navigate to receipt screen
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => ReceiptScreen(
-            payment: payment,
-            student: _currentStudent!,
-          ),
+          builder: (context) =>
+              ReceiptScreen(payment: payment, student: _currentStudent!),
         ),
       );
 
@@ -394,14 +327,12 @@ class _HomePageState extends State<HomePage> {
       // Hide loading and navigate to receipt screen
       if (!mounted) return;
       ScaffoldMessenger.of(context).clearSnackBars();
-      
+
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => ReceiptScreen(
-            payment: payment,
-            student: _currentStudent!,
-          ),
+          builder: (context) =>
+              ReceiptScreen(payment: payment, student: _currentStudent!),
         ),
       );
 
@@ -448,7 +379,6 @@ class _HomePageState extends State<HomePage> {
       );
 
       // TODO: Show receipt screen (we'll add this next)
-
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).clearSnackBars();
@@ -462,7 +392,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  
   /// SIGN OUT
   Future<void> _signOut() async {
     try {
@@ -474,28 +403,18 @@ class _HomePageState extends State<HomePage> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error signing out: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error signing out: $e')));
       }
     }
   }
 
-  /// OPEN REPORTS PAGE
-  Future<void> _openReports() async {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const ReportsPage(),
-      ),
-    );
-  }
-
   /// BUILD STUDENT INFORMATION CARD
   /// Displays student details or empty placeholder
-Widget _buildStudentInfoCard() {
-  return Container(
-    padding: const EdgeInsets.all(10),   
+  Widget _buildStudentInfoCard() {
+    return Container(
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -521,18 +440,24 @@ Widget _buildStudentInfoCard() {
             ),
           ),
           const Divider(),
-          
+
           // Student ID
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 _currentStudent?.id ?? '000000000',
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w500),
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               // Year level badge
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.grey),
                   borderRadius: BorderRadius.circular(4),
@@ -546,18 +471,15 @@ Widget _buildStudentInfoCard() {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const Text(
-                      'Year',
-                      style: TextStyle(fontSize: 10),
-                    ),
+                    const Text('Year', style: TextStyle(fontSize: 10)),
                   ],
                 ),
               ),
             ],
           ),
-          
+
           const SizedBox(height: 4),
-          
+
           // Name
           Text(
             _currentStudent?.lastName ?? 'Last Name',
@@ -567,9 +489,9 @@ Widget _buildStudentInfoCard() {
             _currentStudent?.firstName ?? 'First Name Second Name',
             style: const TextStyle(fontSize: 20),
           ),
-          
+
           const SizedBox(height: 4),
-          
+
           // College and Program
           Text(
             '${_currentStudent?.college ?? 'CAS'} - ${_currentStudent?.program ?? 'BS Information Technology'}',
@@ -579,17 +501,17 @@ Widget _buildStudentInfoCard() {
               color: Colors.blue[700],
             ),
           ),
-          
+
           const Divider(height: 12),
-          
+
           // Student number label
           const Text(
             'NO. 000000',
             style: TextStyle(fontSize: 12, color: Colors.grey),
           ),
-          
+
           const SizedBox(height: 4),
-          
+
           // Outstanding amounts
           Row(
             children: [
@@ -600,7 +522,10 @@ Widget _buildStudentInfoCard() {
                   children: [
                     const Text(
                       'College Fee Amount',
-                      style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Container(
@@ -608,7 +533,9 @@ Widget _buildStudentInfoCard() {
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey),
                         borderRadius: BorderRadius.circular(8),
-                        color: _studentFeePayment != null ? Colors.green[50] : null,
+                        color: _studentFeePayment != null
+                            ? Colors.green[50]
+                            : null,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -617,7 +544,10 @@ Widget _buildStudentInfoCard() {
                           if (_studentFeePayment != null) ...[
                             // PAID Badge
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.green[700],
                                 borderRadius: BorderRadius.circular(4),
@@ -646,11 +576,16 @@ Widget _buildStudentInfoCard() {
                               children: [
                                 const Text(
                                   '₱',
-                                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  _currentStudent?.outstandingFee.toStringAsFixed(2) ?? '0.00',
+                                  _currentStudent?.outstandingFee
+                                          .toStringAsFixed(2) ??
+                                      '0.00',
                                   style: const TextStyle(
                                     fontSize: 32,
                                     fontWeight: FontWeight.bold,
@@ -665,9 +600,9 @@ Widget _buildStudentInfoCard() {
                   ],
                 ),
               ),
-              
+
               const SizedBox(width: 16),
-            
+
               // Fine amount
               Expanded(
                 child: Column(
@@ -675,7 +610,10 @@ Widget _buildStudentInfoCard() {
                   children: [
                     const Text(
                       'College Fine Amount:',
-                      style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Container(
@@ -688,11 +626,17 @@ Widget _buildStudentInfoCard() {
                         children: [
                           const Text(
                             '₱',
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            _currentStudent?.outstandingFines.toStringAsFixed(2) ?? '0.00',
+                            _currentStudent?.outstandingFines.toStringAsFixed(
+                                  2,
+                                ) ??
+                                '0.00',
                             style: const TextStyle(
                               fontSize: 32,
                               fontWeight: FontWeight.bold,
@@ -719,7 +663,9 @@ Widget _buildStudentInfoCard() {
         // FEE PAYMENT BUTTON (Yellow/Gold)
         Expanded(
           child: ElevatedButton(
-            onPressed: _currentStudent == null ? null : () => _proceedPayment('Fee'),
+            onPressed: _currentStudent == null
+                ? null
+                : () => _proceedPayment('Fee'),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFFFC107), // Yellow/Gold
               foregroundColor: Colors.black,
@@ -731,20 +677,19 @@ Widget _buildStudentInfoCard() {
             ),
             child: const Text(
               'Proceed Fee Payment',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
           ),
         ),
-        
+
         const SizedBox(width: 12),
-        
+
         // FINES PAYMENT BUTTON (Dark Green)
         Expanded(
           child: ElevatedButton(
-            onPressed: _currentStudent == null ? null : () => _proceedPayment('Fines'),
+            onPressed: _currentStudent == null
+                ? null
+                : () => _proceedPayment('Fines'),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF1B5E20), // Dark green
               foregroundColor: Colors.white,
@@ -756,10 +701,7 @@ Widget _buildStudentInfoCard() {
             ),
             child: const Text(
               'Proceed Fines Payment',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
           ),
         ),
@@ -791,7 +733,10 @@ Widget _buildStudentInfoCard() {
               // Text input field
               Expanded(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     border: Border.all(color: Colors.grey[400]!),
                     borderRadius: BorderRadius.circular(8),
@@ -805,9 +750,9 @@ Widget _buildStudentInfoCard() {
                   ),
                 ),
               ),
-              
+
               const SizedBox(width: 8),
-              
+
               // SEARCH BUTTON (Green)
               SizedBox(
                 width: 60,
@@ -835,9 +780,9 @@ Widget _buildStudentInfoCard() {
               ),
             ],
           ),
-          
+
           const SizedBox(height: 4),
-          
+
           // NUMERIC KEYPAD
           _buildKeypad(),
         ],
@@ -853,15 +798,15 @@ Widget _buildStudentInfoCard() {
         // Row 1: 7, 8, 9
         _buildKeypadRow(['7', '8', '9']),
         const SizedBox(height: 4),
-        
+
         // Row 2: 4, 5, 6
         _buildKeypadRow(['4', '5', '6']),
         const SizedBox(height: 4),
-        
+
         // Row 3: 1, 2, 3
         _buildKeypadRow(['1', '2', '3']),
         const SizedBox(height: 4),
-        
+
         // Row 4: Clear, 0, Backspace
         Row(
           children: [
@@ -874,13 +819,16 @@ Widget _buildStudentInfoCard() {
               ),
             ),
             const SizedBox(width: 8),
-            
+
             // 0 button
             Expanded(
-              child: _buildKeypadButton('0', onPressed: () => _onKeypadPressed('0')),
+              child: _buildKeypadButton(
+                '0',
+                onPressed: () => _onKeypadPressed('0'),
+              ),
             ),
             const SizedBox(width: 8),
-            
+
             // BACKSPACE button
             Expanded(
               child: _buildKeypadButton(
@@ -901,15 +849,24 @@ Widget _buildStudentInfoCard() {
     return Row(
       children: [
         Expanded(
-          child: _buildKeypadButton(numbers[0], onPressed: () => _onKeypadPressed(numbers[0])),
+          child: _buildKeypadButton(
+            numbers[0],
+            onPressed: () => _onKeypadPressed(numbers[0]),
+          ),
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: _buildKeypadButton(numbers[1], onPressed: () => _onKeypadPressed(numbers[1])),
+          child: _buildKeypadButton(
+            numbers[1],
+            onPressed: () => _onKeypadPressed(numbers[1]),
+          ),
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: _buildKeypadButton(numbers[2], onPressed: () => _onKeypadPressed(numbers[2])),
+          child: _buildKeypadButton(
+            numbers[2],
+            onPressed: () => _onKeypadPressed(numbers[2]),
+          ),
         ),
       ],
     );
@@ -925,23 +882,18 @@ Widget _buildStudentInfoCard() {
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
-        backgroundColor: backgroundColor ?? const Color(0xFF1B5E20), // Dark green default
+        backgroundColor:
+            backgroundColor ?? const Color(0xFF1B5E20), // Dark green default
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 24),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          fontSize: 28,
-          fontWeight: FontWeight.bold,
-        ),
+        style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
       ),
     );
   }
-
 
   /// MOBILE LAYOUT (existing vertical layout)
   Widget _buildMobileLayout() {
@@ -963,44 +915,43 @@ Widget _buildStudentInfoCard() {
 
   /// DESKTOP LAYOUT (side-by-side layout)
   /// DESKTOP LAYOUT (side-by-side layout like your image)
-Widget _buildDesktopLayout() {
-  return Padding(
-    padding: const EdgeInsets.all(16.0),  // Reduced from 24
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // LEFT SIDE: Student info and payment buttons
-        Expanded(
-          flex: 3,  // Changed from 2 to 3 (takes more space)
-          child: Column(
-            children: [
-              _buildStudentInfoCard(),
-              const SizedBox(height: 12),  // Reduced from 16
-              _buildPaymentButtons(),
-            ],
+  Widget _buildDesktopLayout() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0), // Reduced from 24
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // LEFT SIDE: Student info and payment buttons
+          Expanded(
+            flex: 3, // Changed from 2 to 3 (takes more space)
+            child: Column(
+              children: [
+                _buildStudentInfoCard(),
+                const SizedBox(height: 12), // Reduced from 16
+                _buildPaymentButtons(),
+              ],
+            ),
           ),
-        ),
-        
-        const SizedBox(width: 16),  // Reduced from 24
-        
-        // RIGHT SIDE: Search and keypad
-        Expanded(
-          flex: 2,  // Changed from 1 to 2 (takes more space)
-          child: _buildSearchAndKeypad(),
-        ),
-      ],
-    ),
-  );
-}
- @override
-  Widget build(BuildContext context) {
 
-      // Detect screen size
+          const SizedBox(width: 16), // Reduced from 24
+          // RIGHT SIDE: Search and keypad
+          Expanded(
+            flex: 2, // Changed from 1 to 2 (takes more space)
+            child: _buildSearchAndKeypad(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Detect screen size
     final screenWidth = MediaQuery.of(context).size.width;
-    final isDesktop = screenWidth > 800;  // Desktop if wider than 800px
+    final isDesktop = screenWidth > 800; // Desktop if wider than 800px
     return Scaffold(
       backgroundColor: Colors.grey[100],
-      
+
       // TOP APP BAR
       appBar: AppBar(
         backgroundColor: const Color(0xFF1B5E20), // Dark green
@@ -1016,55 +967,45 @@ Widget _buildDesktopLayout() {
               ),
               child: const Icon(Icons.school, color: Color(0xFF1B5E20)),
             ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                supabase.auth.currentUser?.userMetadata?['organization_name'] ?? 'Organization',
-                style: const TextStyle(
-                  fontSize: 14, 
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,  // White text
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  supabase
+                          .auth
+                          .currentUser
+                          ?.userMetadata?['organization_name'] ??
+                      'Organization',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white, // White text
+                  ),
                 ),
-              ),
-              Text(
-                supabase.auth.currentUser?.email ?? '',
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: Colors.white70,  // Light white text
+                Text(
+                  supabase.auth.currentUser?.email ?? '',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: Colors.white70, // Light white text
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
         ),
         actions: [
           // Three dots menu
           PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
+            icon: const Icon(Icons.more_vert, color: Colors.white),
             onSelected: (value) {
               if (value == 'logout') {
                 _signOut();
-              } else if (value == 'test_data') {
-                _createTestData();
               } else if (value == 'upload_csv') {
                 _handleCsvUpload();
-              } else if (value == 'reports') {
-                _openReports();
               }
             },
             itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'reports',
-                child: Row(
-                  children: [
-                    Icon(Icons.analytics, color: Colors.orange),
-                    SizedBox(width: 8),
-                    Text('View Reports'),
-                  ],
-                ),
-              ),
               const PopupMenuItem(
                 value: 'upload_csv',
                 child: Row(
@@ -1072,16 +1013,6 @@ Widget _buildDesktopLayout() {
                     Icon(Icons.upload_file, color: Colors.blue),
                     SizedBox(width: 8),
                     Text('Upload CSV'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'test_data',
-                child: Row(
-                  children: [
-                    Icon(Icons.add_circle, color: Colors.green),
-                    SizedBox(width: 8),
-                    Text('Create Test Data'),
                   ],
                 ),
               ),
@@ -1100,9 +1031,7 @@ Widget _buildDesktopLayout() {
         ],
       ),
 
-      body: isDesktop 
-        ? _buildDesktopLayout()
-        : _buildMobileLayout(),
+      body: isDesktop ? _buildDesktopLayout() : _buildMobileLayout(),
     );
   }
 }

@@ -16,7 +16,8 @@ class PaymentConfirmationDialog extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<PaymentConfirmationDialog> createState() => _PaymentConfirmationDialogState();
+  State<PaymentConfirmationDialog> createState() =>
+      _PaymentConfirmationDialogState();
 }
 
 class _PaymentConfirmationDialogState extends State<PaymentConfirmationDialog> {
@@ -26,121 +27,189 @@ class _PaymentConfirmationDialogState extends State<PaymentConfirmationDialog> {
   void initState() {
     super.initState();
     // Pre-select student's current year level from database
-  
   }
 
-@override
-Widget build(BuildContext context) {
-  return Dialog(
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 500),  // Add this - limits width to 500px
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 500),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // HEADER
-            Row(
-              children: [
-                Icon(
-                  Icons.receipt_long,
-                  color: Colors.blue[700],
-                  size: 32,
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    'Confirm Payment',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
-            ),
-            
-            const Divider(height: 24),
-            
-            // STUDENT INFO
-            _buildInfoRow('Student Name:', widget.student.fullName),
-            const SizedBox(height: 4),
-            _buildInfoRow('Student ID:', widget.student.id),
-            const SizedBox(height: 4),
-            _buildInfoRow('Payment Type:', widget.paymentType),
-            const SizedBox(height: 4),
-            
-            // AMOUNT (highlighted)
+            // GREEN HEADER
             Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.green[50],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.green[300]!),
+              padding: const EdgeInsets.all(20),
+              decoration: const BoxDecoration(
+                color: Color(0xFF1B5E20),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
+                ),
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Amount to Pay:',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    '₱${widget.amount.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green[700],
+                  const Icon(Icons.receipt_long, color: Colors.white, size: 28),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Confirm Payment',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                   ),
                 ],
               ),
             ),
-            
-            const SizedBox(height: 8),
-            
-            // YEAR LEVEL (Display Only)
-            _buildInfoRow('Year Level:', widget.student.yearLevel ?? 'N/A'),
-            const SizedBox(height: 4),
-            _buildInfoRow('College:', widget.student.college ?? 'N/A'),
-            const SizedBox(height: 4),
-            _buildInfoRow('Program:', widget.student.program ?? 'N/A'),
-            const SizedBox(height: 12),
-          
-            // CONFIRM BUTTON
-          // CONFIRM BUTTON
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1B5E20),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+
+            // WHITE CONTENT AREA
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // STUDENT INFO CARD
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: Column(
+                      children: [
+                        _buildInfoRow('Student Name:', widget.student.fullName),
+                        const SizedBox(height: 8),
+                        _buildInfoRow('Student ID:', widget.student.id),
+                        const SizedBox(height: 8),
+                        _buildInfoRow(
+                          'Program:',
+                          widget.student.program ?? 'N/A',
+                        ),
+                        const SizedBox(height: 8),
+                        _buildInfoRow(
+                          'Year / College:',
+                          '${widget.student.yearLevel ?? 'N/A'} / ${widget.student.college ?? 'N/A'}',
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // PAYMENT TYPE
+                  _buildInfoRow(
+                    'Payment Type:',
+                    widget.paymentType == 'Fee'
+                        ? 'College Fee'
+                        : 'College Fines',
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // AMOUNT (highlighted with light green background)
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F5E9),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Total Amount',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Color(0xFF1B5E20),
+                          ),
+                        ),
+                        Text(
+                          '₱ ${widget.amount.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1B5E20),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // BUTTONS ROW
+                  Row(
+                    children: [
+                      // CANCEL BUTTON (White with border)
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            side: BorderSide(color: Colors.grey[400]!),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text(
+                            'Cancel',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 12),
+
+                      // CONFIRM BUTTON (Yellow/Gold)
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFFFC107),
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text(
+                            'Confirm Payment',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              child: const Text(
-                'Confirm Payment',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
-            
-            const SizedBox(height: 8),
-            
-            // CANCEL BUTTON
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
             ),
           ],
         ),
       ),
-    ),
+      backgroundColor: Colors.white,
     );
   }
 
@@ -149,20 +218,21 @@ Widget build(BuildContext context) {
   Widget _buildInfoRow(String label, String value) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.start,  // Add this line
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(color: Colors.grey, fontSize: 12),  // Made smaller
-        ),
-        const SizedBox(width: 8),  // Add spacing
-        Expanded(  // Add this wrapper
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+        const SizedBox(width: 8),
+        Expanded(
           child: Text(
             value,
-            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),  // Made smaller
-            textAlign: TextAlign.right,  // Align to right
-            maxLines: 2,  // Allow 2 lines
-            overflow: TextOverflow.ellipsis,  // Add ... if still too long
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+              color: Colors.black87,
+            ),
+            textAlign: TextAlign.right,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
