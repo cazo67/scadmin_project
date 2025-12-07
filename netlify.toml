@@ -1,12 +1,14 @@
 [build]
 #BAGO NA NI SIYA
   publish = "build/web"
-  command = "wget -q https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.24.0-stable.tar.xz && tar xf flutter_linux_*.tar.xz && export PATH=$PATH:$PWD/flutter/bin && flutter clean && flutter pub get && flutter build web --release"
+  command = "wget -q https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.38.4-stable.tar.xz && tar xf flutter_linux_*.tar.xz && export PATH=$PATH:$PWD/flutter/bin && flutter clean && flutter pub get && flutter build web --release"
+
 
 [build.environment]
 #10
 #24
-  FLUTTER_VERSION = "3.24.0"
+
+  FLUTTER_VERSION = "3.38.4"
 
 [[redirects]]
   from = "/*"
