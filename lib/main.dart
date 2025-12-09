@@ -6,7 +6,6 @@ import 'pages/disclaimer_dialog.dart';
 
 import 'pages/home_page.dart';
 
-// Your Supabase credentials
 const supabaseUrl = 'https://ochzxjzjqkamhvzrezhs.supabase.co';
 const supabaseKey =
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jaHp4anpqcWthbWh2enJlemhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NTMwNTIsImV4cCI6MjA3OTEyOTA1Mn0.YzgtL-scURT4j2izPSp3dug0PnScvSGjTI-p9niZcKk';

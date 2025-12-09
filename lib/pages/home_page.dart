@@ -8,6 +8,8 @@ import '../services/payment_service.dart';
 import 'payment_confirmation_dialog.dart';
 import 'receipt_screen.dart';
 import 'upload_disclaimer_dialog.dart';
+import 'student_details_page.dart';
+import 'add_payables_page.dart';
 
 /// HOME PAGE (Dashboard)
 /// Main screen after login - shows upload button and student management options
@@ -282,60 +284,6 @@ class _HomePageState extends State<HomePage> {
         yearLevel: _currentStudent!.yearLevel ?? '1st Year',
       );
 
-      // Navigate to receipt screen
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) =>
-              ReceiptScreen(payment: payment, student: _currentStudent!),
-        ),
-      );
-
-      // Process payment through service
-
-      // Update state with payment info
-      setState(() {
-        if (paymentType == 'Fee') {
-          _studentFeePayment = payment;
-          _currentStudent = Student(
-            id: _currentStudent!.id,
-            lastName: _currentStudent!.lastName,
-            firstName: _currentStudent!.firstName,
-            college: _currentStudent!.college,
-            program: _currentStudent!.program,
-            yearLevel: _currentStudent!.yearLevel,
-            outstandingFee: 0.0,
-            outstandingFines: _currentStudent!.outstandingFines,
-            outstandingUnpaidBalance: _currentStudent!.outstandingUnpaidBalance,
-          );
-        } else {
-          _studentFinesPayment = payment;
-          _currentStudent = Student(
-            id: _currentStudent!.id,
-            lastName: _currentStudent!.lastName,
-            firstName: _currentStudent!.firstName,
-            college: _currentStudent!.college,
-            program: _currentStudent!.program,
-            yearLevel: _currentStudent!.yearLevel,
-            outstandingFee: _currentStudent!.outstandingFee,
-            outstandingFines: 0.0,
-            outstandingUnpaidBalance: _currentStudent!.outstandingUnpaidBalance,
-          );
-        }
-      });
-
-      // Hide loading and navigate to receipt screen
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).clearSnackBars();
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) =>
-              ReceiptScreen(payment: payment, student: _currentStudent!),
-        ),
-      );
-
       // Update state with payment info
       setState(() {
         if (paymentType == 'Fee') {
@@ -367,18 +315,15 @@ class _HomePageState extends State<HomePage> {
         }
       });
 
-      // Hide loading and show success
+      // Navigate to receipt screen
       if (!mounted) return;
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Payment successful! OR: ${payment.receiptNumber}'),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 4),
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              ReceiptScreen(payment: payment, student: _currentStudent!),
         ),
       );
-
-      // TODO: Show receipt screen (we'll add this next)
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).clearSnackBars();
@@ -540,60 +485,30 @@ class _HomePageState extends State<HomePage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Amount or PAID badge
-                          if (_studentFeePayment != null) ...[
-                            // PAID Badge
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.green[700],
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Text(
-                                'PAID',
+                          // Amount (shows 0.00 when paid)
+                          Row(
+                            children: [
+                              const Text(
+                                '₱',
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  fontSize: 20,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 12,
                                 ),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'OR: ${_studentFeePayment!.receiptNumber}',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green[700],
+                              const SizedBox(width: 8),
+                              Text(
+                                _studentFeePayment != null
+                                    ? '0.00'
+                                    : (_currentStudent?.outstandingFee
+                                              .toStringAsFixed(2) ??
+                                          '0.00'),
+                                style: const TextStyle(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
-                          ] else ...[
-                            // Outstanding amount
-                            Row(
-                              children: [
-                                const Text(
-                                  '₱',
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  _currentStudent?.outstandingFee
-                                          .toStringAsFixed(2) ??
-                                      '0.00',
-                                  style: const TextStyle(
-                                    fontSize: 32,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                            ],
+                          ),
                         ],
                       ),
                     ),
@@ -621,6 +536,9 @@ class _HomePageState extends State<HomePage> {
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey),
                         borderRadius: BorderRadius.circular(8),
+                        color: _studentFinesPayment != null
+                            ? Colors.green[50]
+                            : null,
                       ),
                       child: Row(
                         children: [
@@ -633,10 +551,11 @@ class _HomePageState extends State<HomePage> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            _currentStudent?.outstandingFines.toStringAsFixed(
-                                  2,
-                                ) ??
-                                '0.00',
+                            _studentFinesPayment != null
+                                ? '0.00'
+                                : (_currentStudent?.outstandingFines
+                                          .toStringAsFixed(2) ??
+                                      '0.00'),
                             style: const TextStyle(
                               fontSize: 32,
                               fontWeight: FontWeight.bold,
@@ -709,11 +628,43 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  /// BUILD VIEW FULL DETAILS BUTTON
+  /// Navigates to student details page with payment history
+  Widget _buildViewFullDetailsButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _currentStudent == null
+            ? null
+            : () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        StudentDetailsPage(student: _currentStudent!),
+                  ),
+                );
+              },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF1B5E20),
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          disabledBackgroundColor: Colors.grey[300],
+        ),
+        child: const Text(
+          'View Full Details',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
   /// BUILD SEARCH INPUT AND KEYPAD
   /// Input field with numeric keypad for entering student ID
   Widget _buildSearchAndKeypad() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -735,7 +686,7 @@ class _HomePageState extends State<HomePage> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
-                    vertical: 12,
+                    vertical: 10,
                   ),
                   decoration: BoxDecoration(
                     border: Border.all(color: Colors.grey[400]!),
@@ -756,7 +707,7 @@ class _HomePageState extends State<HomePage> {
               // SEARCH BUTTON (Green)
               SizedBox(
                 width: 60,
-                height: 48,
+                height: 44,
                 child: ElevatedButton(
                   onPressed: _isSearching ? null : _searchStudent,
                   style: ElevatedButton.styleFrom(
@@ -781,10 +732,10 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
 
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
 
-          // NUMERIC KEYPAD
-          _buildKeypad(),
+          // NUMERIC KEYPAD - fills remaining space
+          Expanded(child: _buildKeypad()),
         ],
       ),
     );
@@ -796,48 +747,50 @@ class _HomePageState extends State<HomePage> {
     return Column(
       children: [
         // Row 1: 7, 8, 9
-        _buildKeypadRow(['7', '8', '9']),
+        Expanded(child: _buildKeypadRow(['7', '8', '9'])),
         const SizedBox(height: 4),
 
         // Row 2: 4, 5, 6
-        _buildKeypadRow(['4', '5', '6']),
+        Expanded(child: _buildKeypadRow(['4', '5', '6'])),
         const SizedBox(height: 4),
 
         // Row 3: 1, 2, 3
-        _buildKeypadRow(['1', '2', '3']),
+        Expanded(child: _buildKeypadRow(['1', '2', '3'])),
         const SizedBox(height: 4),
 
         // Row 4: Clear, 0, Backspace
-        Row(
-          children: [
-            // CLEAR button
-            Expanded(
-              child: _buildKeypadButton(
-                'C',
-                onPressed: _onClearPressed,
-                backgroundColor: Colors.red[700]!,
+        Expanded(
+          child: Row(
+            children: [
+              // CLEAR button
+              Expanded(
+                child: _buildKeypadButton(
+                  'C',
+                  onPressed: _onClearPressed,
+                  backgroundColor: Colors.red[700]!,
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
+              const SizedBox(width: 8),
 
-            // 0 button
-            Expanded(
-              child: _buildKeypadButton(
-                '0',
-                onPressed: () => _onKeypadPressed('0'),
+              // 0 button
+              Expanded(
+                child: _buildKeypadButton(
+                  '0',
+                  onPressed: () => _onKeypadPressed('0'),
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
+              const SizedBox(width: 8),
 
-            // BACKSPACE button
-            Expanded(
-              child: _buildKeypadButton(
-                '⌫',
-                onPressed: _onBackspacePressed,
-                backgroundColor: Colors.orange[700]!,
+              // BACKSPACE button
+              Expanded(
+                child: _buildKeypadButton(
+                  '⌫',
+                  onPressed: _onBackspacePressed,
+                  backgroundColor: Colors.orange[700]!,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );
@@ -879,36 +832,38 @@ class _HomePageState extends State<HomePage> {
     required VoidCallback onPressed,
     Color? backgroundColor,
   }) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor:
-            backgroundColor ?? const Color(0xFF1B5E20), // Dark green default
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 24),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+    return SizedBox.expand(
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor:
+              backgroundColor ?? const Color(0xFF1B5E20), // Dark green default
+          foregroundColor: Colors.white,
+          padding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
       ),
     );
   }
 
   /// MOBILE LAYOUT (existing vertical layout)
   Widget _buildMobileLayout() {
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          children: [
-            _buildStudentInfoCard(),
-            const SizedBox(height: 8),
-            _buildPaymentButtons(),
-            const SizedBox(height: 8),
-            _buildSearchAndKeypad(),
-          ],
-        ),
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Column(
+        children: [
+          _buildStudentInfoCard(),
+          const SizedBox(height: 8),
+          _buildPaymentButtons(),
+          const SizedBox(height: 8),
+          _buildViewFullDetailsButton(),
+          const SizedBox(height: 8),
+          Expanded(child: _buildSearchAndKeypad()),
+        ],
       ),
     );
   }
@@ -929,6 +884,8 @@ class _HomePageState extends State<HomePage> {
                 _buildStudentInfoCard(),
                 const SizedBox(height: 12), // Reduced from 16
                 _buildPaymentButtons(),
+                const SizedBox(height: 12),
+                _buildViewFullDetailsButton(),
               ],
             ),
           ),
@@ -1003,6 +960,13 @@ class _HomePageState extends State<HomePage> {
                 _signOut();
               } else if (value == 'upload_csv') {
                 _handleCsvUpload();
+              } else if (value == 'add_payables') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AddPayablesPage(),
+                  ),
+                );
               }
             },
             itemBuilder: (context) => [
@@ -1013,6 +977,16 @@ class _HomePageState extends State<HomePage> {
                     Icon(Icons.upload_file, color: Colors.blue),
                     SizedBox(width: 8),
                     Text('Upload CSV'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'add_payables',
+                child: Row(
+                  children: [
+                    Icon(Icons.add_circle, color: Color(0xFF1B5E20)),
+                    SizedBox(width: 8),
+                    Text('Add Payables'),
                   ],
                 ),
               ),
