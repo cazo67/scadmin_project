@@ -468,7 +468,7 @@ class _StudentDetailsPageState extends State<StudentDetailsPage> {
               disabledBackgroundColor: Colors.grey[300],
             ),
             child: const Text(
-              'Proceed Fee\nPayment',
+              'Process Fee\nPayment',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
@@ -493,7 +493,7 @@ class _StudentDetailsPageState extends State<StudentDetailsPage> {
               disabledBackgroundColor: Colors.grey[300],
             ),
             child: const Text(
-              'Proceed Fines\nPayment',
+              'Process Fines\nPayment',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),

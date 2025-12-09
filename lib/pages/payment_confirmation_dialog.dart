@@ -138,12 +138,17 @@ class _PaymentConfirmationDialogState extends State<PaymentConfirmationDialog> {
                             color: Color(0xFF1B5E20),
                           ),
                         ),
-                        Text(
-                          '₱ ${widget.amount.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1B5E20),
+                        Flexible(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              '₱ ${widget.amount.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1B5E20),
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -192,11 +197,14 @@ class _PaymentConfirmationDialogState extends State<PaymentConfirmationDialog> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                           ),
-                          child: const Text(
-                            'Confirm Payment',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                          child: const Center(
+                            child: Text(
+                              'Confirm Payment',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
                             ),
                           ),
                         ),

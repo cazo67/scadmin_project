@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'package:intl/intl.dart';
 import '../models/payment_model.dart';
 import '../models/student_model.dart';
@@ -272,41 +271,42 @@ class ReceiptScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                children: [
-                  Container(width: 150, height: 1, color: Colors.black),
-                  const SizedBox(height: 4),
-                  const Text('Student Signature'),
-                ],
+              Expanded(
+                child: Column(
+                  children: [
+                    Container(height: 1, color: Colors.black),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Student Signature',
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
-              Column(
-                children: [
-                  Container(width: 150, height: 1, color: Colors.black),
-                  const SizedBox(height: 4),
-                  const Text('Authorized Signature'),
-                ],
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  children: [
+                    Container(height: 1, color: Colors.black),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Authorized Signature',
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
 
-          // QR CODE
-          Center(
-            child: Column(
-              children: [
-                QrImageView(
-                  data: _generateQRData(),
-                  version: QrVersions.auto,
-                  size: 120,
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Note: Valid only with stamp or\nsigned by an authorized signature.',
-                  style: TextStyle(fontSize: 10, fontStyle: FontStyle.italic),
-                  textAlign: TextAlign.center,
-                ),
-              ],
+          // NOTE
+          const Center(
+            child: Text(
+              'Note: Valid only with stamp or\nsigned by an authorized signature.',
+              style: TextStyle(fontSize: 10, fontStyle: FontStyle.italic),
+              textAlign: TextAlign.center,
             ),
           ),
         ],
@@ -336,17 +336,6 @@ class ReceiptScreen extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  /// GENERATE QR CODE DATA
-  /// Contains receipt verification information
-  String _generateQRData() {
-    return 'OR:${payment.receiptNumber}|'
-        'NAME:${payment.studentName}|'
-        'DATE:${DateFormat('MM-dd-yyyy').format(payment.paymentDate)}|'
-        'AMOUNT:${payment.amount}|'
-        'TYPE:${payment.paymentType}|'
-        'YEAR:${payment.yearLevel}';
   }
 
   /// NUMBER TO WORDS CONVERTER
@@ -444,10 +433,6 @@ class ReceiptScreen extends StatelessWidget {
   /// Creates PDF document of the receipt
   Future<pw.Document> _generatePDF() async {
     final pdf = pw.Document();
-
-    // Generate QR code image data
-    final qrData = _generateQRData();
-    final qrImage = await _generateQRImage(qrData);
 
     // Format date
     final dateFormat = DateFormat('MM-dd-yyyy');
@@ -684,28 +669,15 @@ class ReceiptScreen extends StatelessWidget {
 
               pw.Spacer(),
 
-              // QR CODE AND NOTE
+              // NOTE
               pw.Center(
-                child: pw.Column(
-                  children: [
-                    pw.Container(
-                      width: 100,
-                      height: 100,
-                      child: pw.BarcodeWidget(
-                        data: qrData,
-                        barcode: pw.Barcode.qrCode(),
-                      ),
-                    ),
-                    pw.SizedBox(height: 8),
-                    pw.Text(
-                      'Note: Valid only with stamp or\nsigned by an authorized signature.',
-                      style: pw.TextStyle(
-                        fontSize: 10,
-                        fontStyle: pw.FontStyle.italic,
-                      ),
-                      textAlign: pw.TextAlign.center,
-                    ),
-                  ],
+                child: pw.Text(
+                  'Note: Valid only with stamp or\nsigned by an authorized signature.',
+                  style: pw.TextStyle(
+                    fontSize: 10,
+                    fontStyle: pw.FontStyle.italic,
+                  ),
+                  textAlign: pw.TextAlign.center,
                 ),
               ),
             ],
@@ -739,12 +711,5 @@ class ReceiptScreen extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  /// GENERATE QR IMAGE
-  /// Converts QR data to image for PDF (not used in PDF package, but available if needed)
-  Future<pw.MemoryImage?> _generateQRImage(String data) async {
-    // PDF package has built-in QR code support, so this is optional
-    return null;
   }
 }

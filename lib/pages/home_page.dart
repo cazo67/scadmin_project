@@ -359,7 +359,7 @@ class _HomePageState extends State<HomePage> {
   /// Displays student details or empty placeholder
   Widget _buildStudentInfoCard() {
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -373,6 +373,7 @@ class _HomePageState extends State<HomePage> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Section header
           const Text(
@@ -384,78 +385,68 @@ class _HomePageState extends State<HomePage> {
               color: Colors.grey,
             ),
           ),
-          const Divider(),
 
-          // Student ID
+          // Student ID and Year level
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 _currentStudent?.id ?? '000000000',
                 style: const TextStyle(
-                  fontSize: 24,
+                  fontSize: 20,
                   fontWeight: FontWeight.w500,
                 ),
               ),
               // Year level badge
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
+                  horizontal: 10,
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.grey),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: Column(
-                  children: [
-                    Text(
-                      _currentStudent?.yearLevel ?? '0th',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Text('Year', style: TextStyle(fontSize: 10)),
-                  ],
+                child: Text(
+                  '${_currentStudent?.yearLevel ?? '0th'}',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
           ),
 
-          const SizedBox(height: 4),
-
           // Name
-          Text(
-            _currentStudent?.lastName ?? 'Last Name',
-            style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _currentStudent?.lastName ?? 'Last Name',
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                _currentStudent?.firstName ?? 'First Name',
+                style: const TextStyle(fontSize: 18),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
-          Text(
-            _currentStudent?.firstName ?? 'First Name Second Name',
-            style: const TextStyle(fontSize: 20),
-          ),
-
-          const SizedBox(height: 4),
 
           // College and Program
           Text(
             '${_currentStudent?.college ?? 'CAS'} - ${_currentStudent?.program ?? 'BS Information Technology'}',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 14,
               fontStyle: FontStyle.italic,
               color: Colors.blue[700],
             ),
+            overflow: TextOverflow.ellipsis,
           ),
-
-          const Divider(height: 12),
-
-          // Student number label
-          const Text(
-            'NO. 000000',
-            style: TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-
-          const SizedBox(height: 4),
 
           // Outstanding amounts
           Row(
@@ -466,7 +457,7 @@ class _HomePageState extends State<HomePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'College Fee Amount',
+                      'College Fee',
                       style: TextStyle(
                         fontSize: 12,
                         fontStyle: FontStyle.italic,
@@ -474,7 +465,10 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 4),
                     Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 16,
+                      ),
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey),
                         borderRadius: BorderRadius.circular(8),
@@ -482,41 +476,24 @@ class _HomePageState extends State<HomePage> {
                             ? Colors.green[50]
                             : null,
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Amount (shows 0.00 when paid)
-                          Row(
-                            children: [
-                              const Text(
-                                '₱',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                _studentFeePayment != null
-                                    ? '0.00'
-                                    : (_currentStudent?.outstandingFee
-                                              .toStringAsFixed(2) ??
-                                          '0.00'),
-                                style: const TextStyle(
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
+                      child: Center(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            '₱${_studentFeePayment != null ? '0.00' : (_currentStudent?.outstandingFee.toStringAsFixed(2) ?? '0.00')}',
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
 
-              const SizedBox(width: 16),
+              const SizedBox(width: 10),
 
               // Fine amount
               Expanded(
@@ -524,7 +501,7 @@ class _HomePageState extends State<HomePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'College Fine Amount:',
+                      'College Fine',
                       style: TextStyle(
                         fontSize: 12,
                         fontStyle: FontStyle.italic,
@@ -532,7 +509,10 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 4),
                     Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 16,
+                      ),
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey),
                         borderRadius: BorderRadius.circular(8),
@@ -540,28 +520,17 @@ class _HomePageState extends State<HomePage> {
                             ? Colors.green[50]
                             : null,
                       ),
-                      child: Row(
-                        children: [
-                          const Text(
-                            '₱',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            _studentFinesPayment != null
-                                ? '0.00'
-                                : (_currentStudent?.outstandingFines
-                                          .toStringAsFixed(2) ??
-                                      '0.00'),
+                      child: Center(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            '₱${_studentFinesPayment != null ? '0.00' : (_currentStudent?.outstandingFines.toStringAsFixed(2) ?? '0.00')}',
                             style: const TextStyle(
-                              fontSize: 32,
+                              fontSize: 22,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ],
@@ -588,20 +557,20 @@ class _HomePageState extends State<HomePage> {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFFFC107), // Yellow/Gold
               foregroundColor: Colors.black,
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.symmetric(vertical: 10),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
               disabledBackgroundColor: Colors.grey[300],
             ),
             child: const Text(
-              'Proceed Fee Payment',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              'Process Fee Payment',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
             ),
           ),
         ),
 
-        const SizedBox(width: 12),
+        const SizedBox(width: 8),
 
         // FINES PAYMENT BUTTON (Dark Green)
         Expanded(
@@ -610,17 +579,17 @@ class _HomePageState extends State<HomePage> {
                 ? null
                 : () => _proceedPayment('Fines'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1B5E20), // Dark green
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              backgroundColor: const Color(0xFFFFC107), // Dark green
+              foregroundColor: Colors.black,
+              padding: const EdgeInsets.symmetric(vertical: 10),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
               disabledBackgroundColor: Colors.grey[300],
             ),
             child: const Text(
-              'Proceed Fines Payment',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              'Process Fines Payment',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
             ),
           ),
         ),
@@ -648,13 +617,13 @@ class _HomePageState extends State<HomePage> {
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF1B5E20),
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: const EdgeInsets.symmetric(vertical: 10),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           disabledBackgroundColor: Colors.grey[300],
         ),
         child: const Text(
           'View Full Details',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
         ),
       ),
     );
@@ -856,13 +825,22 @@ class _HomePageState extends State<HomePage> {
       padding: const EdgeInsets.all(8.0),
       child: Column(
         children: [
-          _buildStudentInfoCard(),
-          const SizedBox(height: 8),
-          _buildPaymentButtons(),
-          const SizedBox(height: 8),
-          _buildViewFullDetailsButton(),
-          const SizedBox(height: 8),
-          Expanded(child: _buildSearchAndKeypad()),
+          // TOP 50%: Student info, payment buttons, view details
+          Expanded(
+            flex: 1,
+            child: Column(
+              children: [
+                Expanded(child: _buildStudentInfoCard()),
+                const SizedBox(height: 4),
+                _buildPaymentButtons(),
+                const SizedBox(height: 4),
+                _buildViewFullDetailsButton(),
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+          // BOTTOM 50%: Keypad
+          Expanded(flex: 1, child: _buildSearchAndKeypad()),
         ],
       ),
     );
